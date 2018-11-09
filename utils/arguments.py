@@ -16,10 +16,10 @@ def get_args():
     # DataLoader
     parser.add_argument('--data_dir', default='./data', type=str, help='root directory of the dataset')
     parser.add_argument('--nworkers', default=4, type=int, help='number of data loading workers (default: 4)')
-    parser.add_argument('--bsize', default=32, type=int, help='mini-batch size (default: 32)')
+    parser.add_argument('--bsize', default=64, type=int, help='mini-batch size (default: 32)')
     parser.add_argument('--shuffle', default='True', type=str2bool, help='shuffle the data?')
-    parser.add_argument('--glove_emb_file', default='./data/glove.6B/glove.6B.50d.txt', type=str, help='File containing the pretrained GloVe embeddings')
-    parser.add_argument('--maxlen', default=30, type=int, help='Max length of input sentences')
+    parser.add_argument('--glove_emb_file', default='./data/glove.6B/glove.6B.300d.txt', type=str, help='File containing the pretrained GloVe embeddings')
+    parser.add_argument('--maxlen', default=60, type=int, help='Max length of input sentences')
 
     # Model Parameters
     parser.add_argument('--arch', default='lstm_concat', type=str, help='model architecture]')
@@ -30,10 +30,10 @@ def get_args():
 
     # Optimization Parameters
     parser.add_argument('--optim', default='adam', type=str, help='Optimizer type')
-    parser.add_argument('--lr', default=1e-2, type=float, help='initial learning rate')
+    parser.add_argument('--lr', default=1e-3, type=float, help='initial learning rate')
     parser.add_argument('--wd', default=1e-4, type=float, help='weight decay (default: 1e-4)')
     parser.add_argument('--momentum', default=0.9, type=float, help='momentum')
-    parser.add_argument('--epochs', default=100, type=int, help='number of total epochs to run')
+    parser.add_argument('--epochs', default=20, type=int, help='number of total epochs to run')
     parser.add_argument('--max_norm', default=1, type=float, help='Max grad norm')
     parser.add_argument('--lr_decay_step', default=50, type=int, help='learning rate decay step (after how many epochs)')
     parser.add_argument('--lr_decay_gamma', default=0.1, type=float, help='learning rate decay gamma')

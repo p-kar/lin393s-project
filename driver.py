@@ -57,7 +57,7 @@ def evaluate_model(opts, model, loader, criterion):
 
 def train(opts):
 
-    train_dataset = QuestionPairsDataset(opts.data_dir, split='val', \
+    train_dataset = QuestionPairsDataset(opts.data_dir, split='train', \
         glove_emb_file=opts.glove_emb_file, maxlen=opts.maxlen)
     valid_dataset = QuestionPairsDataset(opts.data_dir, split='val', \
         glove_emb_file=opts.glove_emb_file, maxlen=opts.maxlen)
@@ -172,7 +172,7 @@ def train(opts):
             'n_iter': n_iter,
             'opts': opts,
             'val_acc': val_acc,
-            'best_val_l1_norm': best_val_l1_norm
+            'best_val_acc': best_val_acc
         }
         model_path = os.path.join(opts.save_path, 'model_latest.net')
         torch.save(save_state, model_path)
