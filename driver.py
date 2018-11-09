@@ -70,6 +70,9 @@ def train(opts):
     if opts.arch == 'lstm_concat':
         model = LSTMWithConcatBaseline(hidden_size=opts.hidden_size, num_layers=opts.num_layers, \
             bidirectional=opts.bidirectional, glove_emb_file=opts.glove_emb_file, pretrained_emb=opts.pretrained_emb)
+    elif opts.arch == 'lstm_dist_angle':
+        model = LSTMWithDistAngleBaseline(hidden_size=opts.hidden_size, num_layers=opts.num_layers, \
+            bidirectional=opts.bidirectional, glove_emb_file=opts.glove_emb_file, pretrained_emb=opts.pretrained_emb)
     else:
         raise NotImplementedError('unsupported model architecture')
 
