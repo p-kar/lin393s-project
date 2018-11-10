@@ -14,6 +14,7 @@ python -u $code_root/driver.py \
 	--num_layers __NUM_LAYERS__ \
 	--bidirectional __BIDIRECTIONAL__ \
 	--pretrained_emb __PRETRAINED_EMB__ \
+	--dropout_p __DROPOUT_P__ \
 	--optim __OPTIM__ \
 	--lr __LR__ \
 	--wd __WD__ \
