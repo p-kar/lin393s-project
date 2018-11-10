@@ -14,6 +14,8 @@ class LSTMWithConcatBaseline(nn.Module):
 		"""
 		"""
 		super(LSTMWithConcatBaseline, self).__init__()
+		if not pretrained_emb:
+			raise NotImplementedError('always loads pretrained embeddings')
 		if num_layers > 1:
 			raise NotImplementedError('don\'t support multiple LSTM cell')
 		if bidirectional:

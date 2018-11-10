@@ -23,10 +23,11 @@ def get_args():
 
     # Model Parameters
     parser.add_argument('--arch', default='lstm_concat', type=str, help='model architecture]')
-    parser.add_argument('--hidden_size', default=300, type=int, help='Size of the hidden layer')
+    parser.add_argument('--hidden_size', default=200, type=int, help='Size of the hidden layer')
     parser.add_argument('--num_layers', default=1, type=int, help='Number of RNN layers')
     parser.add_argument('--bidirectional', default=False, type=str2bool, help='use bidirectional RNN')
     parser.add_argument('--pretrained_emb', default=True, type=str2bool, help='use pretrained GloVe embeddings')
+    parser.add_argument('--dropout_p', default=0.2, type=float, help='Dropout probablity for the linear layers')
 
     # Optimization Parameters
     parser.add_argument('--optim', default='adam', type=str, help='Optimizer type')

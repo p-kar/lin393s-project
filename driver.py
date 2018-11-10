@@ -19,6 +19,7 @@ from utils.dataset import QuestionPairsDataset, collate_data
 from utils.misc import set_random_seeds
 from utils.arguments import get_args
 from models.baselines import *
+from models.decomposable_attention import DecomposableAttention
 
 use_cuda = torch.cuda.is_available()
 
@@ -73,6 +74,9 @@ def train(opts):
     elif opts.arch == 'lstm_dist_angle':
         model = LSTMWithDistAngleBaseline(hidden_size=opts.hidden_size, num_layers=opts.num_layers, \
             bidirectional=opts.bidirectional, glove_emb_file=opts.glove_emb_file, pretrained_emb=opts.pretrained_emb)
+    elif opts.arch == 'decomp_attention':
+        model = DecomposableAttention(hidden_size=opts.hidden_size, dropout_p=opts.dropout_p, \
+            glove_emb_file=opts.glove_emb_file, pretrained_emb=opts.pretrained_emb)
     else:
         raise NotImplementedError('unsupported model architecture')
 
