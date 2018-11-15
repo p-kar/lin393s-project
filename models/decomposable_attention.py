@@ -48,12 +48,12 @@ class AttendFeedForward(nn.Module):
 
 		e = torch.bmm(h1, h2t)
 
-		e_alpha = torch.exp(e - torch.max(e, dim=2)[0].unsqueeze(1))
+		e_alpha = torch.exp(e - torch.max(e, dim=1)[0].unsqueeze(1))
 		e_alpha = torch.mul(e_alpha, mask1.unsqueeze(-1))
 		e_alpha = torch.div(e_alpha, torch.sum(e_alpha, dim=1).unsqueeze(1))
 		# b x LA x LB
 
-		e_beta = torch.exp(e - torch.max(e, dim=1)[0].unsqueeze(-1))
+		e_beta = torch.exp(e - torch.max(e, dim=2)[0].unsqueeze(-1))
 		e_beta = torch.mul(e_beta, mask2.unsqueeze(1))
 		e_beta = torch.div(e_beta, torch.sum(e_beta, dim=2).unsqueeze(-1))
 		# b x LA x LB
