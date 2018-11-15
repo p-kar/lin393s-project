@@ -189,16 +189,16 @@ class DecomposableAttention(nn.Module):
 		# b x LB x embed_size
 
 		mask1 = torch.arange(0, maxlen).expand(batch_size, maxlen)
+		if torch.cuda.is_available():
+			mask1 = mask1.cuda()
 		mask1 = mask1 < len1.unsqueeze(-1)
 		mask2 = torch.arange(0, maxlen).expand(batch_size, maxlen)
+		if torch.cuda.is_available():
+			mask2 = mask2.cuda()
 		mask2 = mask2 < len2.unsqueeze(-1)
 
-		if torch.cuda.is_available():
-			mask1 = mask1.float().cuda()
-			mask2 = mask2.float().cuda()
-		else:
-			mask1 = mask1.float()
-			mask2 = mask2.float()
+		mask1 = mask1.float()
+		mask2 = mask2.float()
 
 		alphas, betas = self.attend(s1, s2, mask1, mask2)
 		v1, v2 = self.compare(s1, s2, alphas, betas, mask1, mask2)
