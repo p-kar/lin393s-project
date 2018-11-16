@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import numpy as np
 
 sys.path.append("..")
-from utils.misc import loadGloveFile
+from utils.misc import loadGloveFile, ixvr
 
 class AttendFeedForward(nn.Module):
 	def __init__(self, embed_size=300, hidden_size=200, dropout_p=0.2):
@@ -171,6 +171,9 @@ class DecomposableAttention(nn.Module):
 		self.attend = AttendFeedForward(embed_size=embed_size, hidden_size=hidden_size, dropout_p=dropout_p)
 		self.compare = CompareFeedForward(embed_size=embed_size, hidden_size=hidden_size, dropout_p=dropout_p)
 		self.aggregate = AggregateFeedForward(hidden_size=hidden_size, dropout_p=dropout_p)
+
+		# initialize network weights using Xavier init (with bias 0.01)
+		self.apply(ixvr)
 
 	def forward(self, s1, s2, len1, len2):
 		"""
