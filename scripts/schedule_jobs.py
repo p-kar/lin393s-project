@@ -2,7 +2,7 @@ import os
 import pdb
 import subprocess as sp
 
-OUTPUT_ROOT='/scratch/cluster/pkar/lin393s-project/runs/baselines'
+OUTPUT_ROOT='/scratch/cluster/pkar/lin393s-project/runs/decomp_attention'
 SCRIPT_ROOT='/scratch/cluster/pkar/lin393s-project/scripts/'
 
 mapping_dict = {
@@ -10,7 +10,7 @@ mapping_dict = {
     '__EMAILID__': 'pkar@cs.utexas.edu',
     '__PROJECT__': 'INSTRUCTIONAL',
     # Script parameters
-    '__JOBNAME__': ['lstm_concat_lr_1e-3', 'lstm_dist_angle_lr_1e-3', 'decomp_attention_lr_1e-3'],
+    '__JOBNAME__': ['decomp_attention_lr_1e-1', 'decomp_attention_lr_3e-1', 'decomp_attention_lr_1e-2', 'decomp_attention_lr_3e-2', 'decomp_attention_lr_1e-3', 'decomp_attention_lr_3e-3', 'decomp_attention_lr_1e-4'],
     # Algorithm hyperparameters
     '__CODE_ROOT__': '/scratch/cluster/pkar/lin393s-project',
     '__MODE__': 'train',
@@ -20,17 +20,17 @@ mapping_dict = {
     '__SHUFFLE__': 'True',
     '__GLOVE_EMB_FILE__': '/scratch/cluster/pkar/lin393s-project/data/glove.6B/glove.6B.300d.txt',
     '__MAXLEN__': '60',
-    '__ARCH__': ['lstm_concat', 'lstm_dist_angle', 'decomp_attention'],
+    '__ARCH__': 'decomp_attention',
     '__HIDDEN_SIZE__': '300',
     '__NUM_LAYERS__': '1',
     '__BIDIRECTIONAL__': 'False',
     '__PRETRAINED_EMB__': 'True',
-    '__DROPOUT_P__': '0.2',
-    '__OPTIM__': 'adam',
-    '__LR__': ['1e-3', '1e-3', '1e-3'],
-    '__WD__': '1e-4',
+    '__DROPOUT_P__': '0.0',
+    '__OPTIM__': 'sgd',
+    '__LR__': ['1e-1', '3e-1', '1e-2', '3e-2', '1e-3', '3e-3', '1e-4'],
+    '__WD__': '4e-5',
     '__MOMENTUM__': '0.9',
-    '__EPOCHS__': '20',
+    '__EPOCHS__': '40',
     '__MAX_NORM__': '10',
     '__LR_DECAY_STEP__': '50',
     '__LR_DECAY_GAMMA__': '0.1',

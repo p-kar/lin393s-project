@@ -107,4 +107,5 @@ data/
 logs/
 runs/
 trained_models/
+scripts/
 .DS_Store
