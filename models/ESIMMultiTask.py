@@ -227,8 +227,8 @@ class ESIMMultiTask(nn.Module):
 		Args:
 			q: Reddit question embeddings (b x LA)
 			resp: Reddit response candidates embeddings (b x K x LB)
-			len1: Length of the input question (b)
-			len2: Length of the response candidates (b x K)
+			len_q: Length of the input question (b)
+			len_resp: Length of the response candidates (b x K)
 		"""
 
 		batch_size = q.shape[0]
@@ -239,7 +239,7 @@ class ESIMMultiTask(nn.Module):
 		q, _ = self.encoder(q)
 		q = torch.transpose(q, 0, 1).contiguous()
 		# b x LA x (hidden_size * 2)
-		resp = self.drop(self.embedding(resp)).view(batch_size * K, maxlen, -1).tranpose(0, 1)
+		resp = self.drop(self.embedding(resp)).view(batch_size * K, maxlen, -1).transpose(0, 1)
 		resp, _ = self.encoder(resp)
 		resp = torch.transpose(resp, 0, 1).view(batch_size, K, maxlen, -1).contiguous()
 		# b x K x LB x (hidden_size * 2)
@@ -247,20 +247,20 @@ class ESIMMultiTask(nn.Module):
 		mask1 = torch.arange(0, maxlen).expand(batch_size, maxlen)
 		if torch.cuda.is_available():
 			mask1 = mask1.cuda()
-		mask1 = mask1 < len1.unsqueeze(-1)
+		mask1 = mask1 < len_q.unsqueeze(-1)
 		mask1 = mask1.float()
 		# b x LA
 
 		mask2 = torch.arange(0, maxlen).expand(batch_size * K, maxlen)
 		if torch.cuda.is_available():
 			mask2 = mask2.cuda()
-		mask2 = mask2 < len2.view(-1).unsqueeze(-1)
+		mask2 = mask2 < len_resp.view(-1).unsqueeze(-1)
 		mask2 = mask2.view(batch_size, K, -1).float()
 		# b x K x LB
 
-		q = q.unsqueeze(1).expand(-1, K, -1, -1).view(batch_size * K, maxlen, -1)
+		q = q.unsqueeze(1).expand(-1, K, -1, -1).contiguous().view(batch_size * K, maxlen, -1)
 		# (b * K) x LA x (hidden_size * 2)
-		mask1 = mask1.unsqueeze(1).expand(-1, K, -1).view(batch_size * K, maxlen)
+		mask1 = mask1.unsqueeze(1).expand(-1, K, -1).contiguous().view(batch_size * K, maxlen)
 		# (b * K) x LA
 
 		resp = resp.view(batch_size * K, maxlen, -1)

@@ -11,18 +11,19 @@ def get_args():
     parser = argparse.ArgumentParser(description='LIN 393S: Quora Semantic Question Matching')
 
     # Mode
-    parser.add_argument('--mode', default='train', type=str, help='mode of the python script')
+    parser.add_argument('--mode', default='train_quora', type=str, help='mode of the python script')
 
     # DataLoader
-    parser.add_argument('--data_dir', default='./data/quora', type=str, help='root directory of the dataset')
+    parser.add_argument('--data_dir', default='./data', type=str, help='root directory of the dataset')
     parser.add_argument('--nworkers', default=4, type=int, help='number of data loading workers (default: 4)')
     parser.add_argument('--bsize', default=64, type=int, help='mini-batch size (default: 32)')
     parser.add_argument('--shuffle', default='True', type=str2bool, help='shuffle the data?')
     parser.add_argument('--glove_emb_file', default='./data/glove.6B/glove.6B.300d.txt', type=str, help='File containing the pretrained GloVe embeddings')
     parser.add_argument('--maxlen', default=60, type=int, help='Max length of input sentences')
+    parser.add_argument('--n_candidate_resp', default=10, type=int, help='Number of random candidate responses used for training Reddit model')
 
     # Model Parameters
-    parser.add_argument('--arch', default='lstm_concat', type=str, help='model architecture]')
+    parser.add_argument('--arch', default='lstm_concat', type=str, help='model architecture')
     parser.add_argument('--hidden_size', default=200, type=int, help='Size of the hidden layer')
     parser.add_argument('--num_layers', default=1, type=int, help='Number of RNN layers')
     parser.add_argument('--bidirectional', default=False, type=str2bool, help='use bidirectional RNN')

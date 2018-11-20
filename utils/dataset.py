@@ -134,10 +134,10 @@ class RedditCommentPairsDataset(Dataset):
 		indexes = self.sample_indexes[start_idx:start_idx + self.K - 1]
 
 		sents = [self.data[idx][1] for idx in indexes]
-		label = random.randint(self.K)
+		label = random.randint(0, self.K - 1)
 		sents = sents[:label] + [correct] + sents[label:]
 		resp = torch.stack([torch.LongTensor(self._parse(s)) for s in sents])
-		len_resp = [min(self.maxlen, len(s)) for s in sents]
+		len_resp = torch.LongTensor([min(self.maxlen, len(s)) for s in sents])
 
 		return resp, len_resp, label
 
