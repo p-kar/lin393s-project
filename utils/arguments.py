@@ -14,7 +14,7 @@ def get_args():
     parser.add_argument('--mode', default='train', type=str, help='mode of the python script')
 
     # DataLoader
-    parser.add_argument('--data_dir', default='./data', type=str, help='root directory of the dataset')
+    parser.add_argument('--data_dir', default='./data/quora', type=str, help='root directory of the dataset')
     parser.add_argument('--nworkers', default=4, type=int, help='number of data loading workers (default: 4)')
     parser.add_argument('--bsize', default=64, type=int, help='mini-batch size (default: 32)')
     parser.add_argument('--shuffle', default='True', type=str2bool, help='shuffle the data?')
@@ -38,7 +38,6 @@ def get_args():
     parser.add_argument('--max_norm', default=1, type=float, help='Max grad norm')
     parser.add_argument('--lr_decay_step', default=50, type=int, help='learning rate decay step (after how many epochs)')
     parser.add_argument('--lr_decay_gamma', default=0.1, type=float, help='learning rate decay gamma')
-
     parser.add_argument('--start_epoch', default=0, type=int, help='manual epoch number (useful on restarts)')
 
     # Save Parameter

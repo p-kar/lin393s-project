@@ -15,11 +15,12 @@ import torch.optim
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
 
-from utils.dataset import QuestionPairsDataset, collate_data
+from utils.dataset import QuoraQuestionPairsDataset, collate_data
 from utils.misc import set_random_seeds
 from utils.arguments import get_args
 from models.baselines import *
 from models.decomposable_attention import DecomposableAttention
+from models.ESIMMultiTask import ESIMMultiTask
 
 use_cuda = torch.cuda.is_available()
 
@@ -58,9 +59,9 @@ def evaluate_model(opts, model, loader, criterion):
 
 def train(opts):
 
-    train_dataset = QuestionPairsDataset(opts.data_dir, split='train', \
+    train_dataset = QuoraQuestionPairsDataset(opts.data_dir, split='train', \
         glove_emb_file=opts.glove_emb_file, maxlen=opts.maxlen)
-    valid_dataset = QuestionPairsDataset(opts.data_dir, split='val', \
+    valid_dataset = QuoraQuestionPairsDataset(opts.data_dir, split='val', \
         glove_emb_file=opts.glove_emb_file, maxlen=opts.maxlen)
 
     train_loader = DataLoader(train_dataset, batch_size=opts.bsize, shuffle=opts.shuffle, \
@@ -76,6 +77,9 @@ def train(opts):
             bidirectional=opts.bidirectional, glove_emb_file=opts.glove_emb_file, pretrained_emb=opts.pretrained_emb)
     elif opts.arch == 'decomp_attention':
         model = DecomposableAttention(hidden_size=opts.hidden_size, dropout_p=opts.dropout_p, \
+            glove_emb_file=opts.glove_emb_file, pretrained_emb=opts.pretrained_emb)
+    elif opts.arch == 'esim_multitask':
+        model = ESIMMultiTask(hidden_size=opts.hidden_size, dropout_p=opts.dropout_p, \
             glove_emb_file=opts.glove_emb_file, pretrained_emb=opts.pretrained_emb)
     else:
         raise NotImplementedError('unsupported model architecture')
