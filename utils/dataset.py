@@ -31,6 +31,8 @@ def readQuoraDataFile(fname):
 			line[0] = word_tokenize(line[0], preserve_line=True)
 			line[1] = word_tokenize(line[1], preserve_line=True)
 			line[2] = int(line[2])
+			if len(line[0]) == 0 or len(line[1]) == 0:
+				continue
 			samples.append(line)
 
 	return samples
@@ -52,6 +54,8 @@ def readRedditDataFile(fname):
 		if len(line) == 2:
 			line[0] = word_tokenize(line[0], preserve_line=True)
 			line[1] = word_tokenize(line[1], preserve_line=True)
+			if len(line[0]) == 0 or len(line[1]) == 0:
+				continue
 			samples.append(line)
 
 	return samples
