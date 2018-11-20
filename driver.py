@@ -17,6 +17,7 @@ from torch.utils.data import DataLoader
 
 from utils.arguments import get_args
 from utils.misc import set_random_seeds
+from utils.logger import TensorboardXLogger
 from utils.dataset import QuoraQuestionPairsDataset, RedditCommentPairsDataset, collate_data
 from models.baselines import *
 from models.decomposable_attention import DecomposableAttention
@@ -39,6 +40,37 @@ def accuracy(output, target, topk=(1,)):
         res.append(correct_k.mul_(1. / batch_size))
     return res
 
+def run_quora_iter(d, model, criterion):
+    batch_size = d['s1'].shape[0]
+    if use_cuda:
+        d['s1'] = d['s1'].cuda()
+        d['s2'] = d['s2'].cuda()
+        d['len1'] = d['len1'].cuda()
+        d['len2'] = d['len2'].cuda()
+        d['label'] = d['label'].cuda()
+
+    out = model(d['s1'], d['s2'], d['len1'], d['len2'])
+    _, pred_labels = torch.max(F.softmax(out, dim=1), dim=1)
+    acc = torch.eq(pred_labels, d['label']).sum().float() / batch_size
+    loss = criterion(out, d['label'])
+
+    return loss, acc
+
+def run_reddit_iter(d, model, criterion):
+    batch_size = d['q'].shape[0]
+    if use_cuda:
+        d['q'] = d['q'].cuda()
+        d['resp'] = d['resp'].cuda()
+        d['len_q'] = d['len_q'].cuda()
+        d['len_resp'] = d['len_resp'].cuda()
+        d['label'] = d['label'].cuda()
+
+    out = model.rank_responses(d['q'], d['resp'], d['len_q'], d['len_resp'])
+    loss = criterion(out, d['label'])
+    prec1, prec3 = accuracy(out, d['label'], topk=(1, 3))
+
+    return loss, prec1, prec3
+
 def evaluate_model_quora(opts, model, loader, criterion):
     model.eval()
 
@@ -49,19 +81,8 @@ def evaluate_model_quora(opts, model, loader, criterion):
 
     with torch.no_grad():
         for i, d in enumerate(loader):
-            batch_size = d['s1'].shape[0]
-            if use_cuda:
-                d['s1'] = d['s1'].cuda()
-                d['s2'] = d['s2'].cuda()
-                d['len1'] = d['len1'].cuda()
-                d['len2'] = d['len2'].cuda()
-                d['label'] = d['label'].cuda()
 
-            out = model(d['s1'], d['s2'], d['len1'], d['len2'])
-            _, pred_labels = torch.max(F.softmax(out, dim=1), dim=1)
-            acc = torch.eq(pred_labels, d['label']).sum().float() / batch_size
-            loss = criterion(out, d['label'])
-
+            loss, acc = run_quora_iter(d, model, criterion)
             val_loss += loss.data.cpu().item()
             val_acc += acc.data.cpu().item()
             num_batches += 1
@@ -83,18 +104,8 @@ def evaluate_model_reddit(opts, model, loader, criterion):
 
     with torch.no_grad():
         for i, d in enumerate(loader):
-            batch_size = d['q'].shape[0]
-            if use_cuda:
-                d['q'] = d['q'].cuda()
-                d['resp'] = d['resp'].cuda()
-                d['len_q'] = d['len_q'].cuda()
-                d['len_resp'] = d['len_resp'].cuda()
-                d['label'] = d['label'].cuda()
 
-            out = model.rank_responses(d['q'], d['resp'], d['len_q'], d['len_resp'])
-            loss = criterion(out, d['label'])
-            prec1, prec3 = accuracy(out, d['label'], topk=(1, 3))
-
+            loss, prec1, prec3 = run_reddit_iter(d, model, criterion)
             val_loss += loss.data.cpu().item()
             val_prec1 += prec1.data.cpu().item()
             val_prec3 += prec3.data.cpu().item()
@@ -149,11 +160,8 @@ def train_quora(opts):
         criterion = criterion.cuda()
 
     # for logging
-    n_iter = 0
-    writer = SummaryWriter(log_dir=opts.log_dir)
-    loss_log = {'train/loss' : 0.0, 'train/acc' : 0.0}
-    time_start = time.time()
-    num_batches = 0
+    logger = TensorboardXLogger(opts.start_epoch, opts.log_iter, opts.log_dir)
+    logger.set(['loss', 'acc'])
 
     # for choosing the best model
     best_val_acc = 0.0
@@ -161,54 +169,20 @@ def train_quora(opts):
     for epoch in range(opts.start_epoch, opts.epochs):
         model.train()
         scheduler.step()
+        logger.step()
         for i, d in enumerate(train_loader):
-            batch_size = d['s1'].shape[0]
-            if use_cuda:
-                d['s1'] = d['s1'].cuda()
-                d['s2'] = d['s2'].cuda()
-                d['len1'] = d['len1'].cuda()
-                d['len2'] = d['len2'].cuda()
-                d['label'] = d['label'].cuda()
-
-            out = model(d['s1'], d['s2'], d['len1'], d['len2'])
-            _, pred_labels = torch.max(F.softmax(out, dim=1), dim=1)
-            acc = torch.eq(pred_labels, d['label']).sum().float() / batch_size
-            loss = criterion(out, d['label'])
-
+            loss, acc = run_quora_iter(d, model, criterion)
             # perform update
             optimizer.zero_grad()
             loss.backward()
             nn.utils.clip_grad_norm_(model.parameters(), opts.max_norm)
             optimizer.step()
-
             # log the losses
-            n_iter += 1
-            num_batches += 1
-            loss_log['train/loss'] += loss.data.cpu().item()
-            loss_log['train/acc'] += acc.data.cpu().item()
-
-            if num_batches != 0 and n_iter % opts.log_iter == 0:
-                time_end = time.time()
-                time_taken = time_end - time_start
-                avg_train_loss = loss_log['train/loss'] / num_batches
-                avg_train_acc = loss_log['train/acc'] / num_batches
-
-                print ("epoch: %d, updates: %d, time: %.2f, avg_train_loss: %.5f, avg_train_acc: %.5f" % (epoch, n_iter, \
-                    time_taken, avg_train_loss, avg_train_acc))
-                # writing values to SummaryWriter
-                writer.add_scalar('train/loss', avg_train_loss, n_iter)
-                writer.add_scalar('train/acc', avg_train_acc, n_iter)
-                # reset values back
-                loss_log = {'train/loss' : 0.0, 'train/acc' : 0.0}
-                num_batches = 0.0
-                time_start = time.time()
+            logger.update(loss, acc)
 
         val_loss, val_acc, time_taken = evaluate_model_quora(opts, model, valid_loader, criterion)
-        print ("epoch: %d, updates: %d, time: %.2f, avg_valid_loss: %.5f, avg_valid_acc: %.5f" % (epoch, n_iter, \
-                time_taken, val_loss, val_acc))
-        # writing values to SummaryWriter
-        writer.add_scalar('val/loss', val_loss, n_iter)
-        writer.add_scalar('val/acc', val_acc, n_iter)
+        # log the validation losses
+        logger.log_valid(time_taken, val_loss, val_acc)
         print ('')
 
         # Save the model to disk
@@ -218,7 +192,7 @@ def train_quora(opts):
                 'epoch': epoch,
                 'state_dict': model.state_dict(),
                 'optimizer': optimizer.state_dict(),
-                'n_iter': n_iter,
+                'n_iter': logger.n_iter,
                 'opts': opts,
                 'val_acc': val_acc,
                 'best_val_acc': best_val_acc
@@ -230,7 +204,7 @@ def train_quora(opts):
             'epoch': epoch,
             'state_dict': model.state_dict(),
             'optimizer': optimizer.state_dict(),
-            'n_iter': n_iter,
+            'n_iter': logger.n_iter,
             'opts': opts,
             'val_acc': val_acc,
             'best_val_acc': best_val_acc
@@ -271,11 +245,8 @@ def train_reddit(opts):
         criterion = criterion.cuda()
 
     # for logging
-    n_iter = 0
-    writer = SummaryWriter(log_dir=opts.log_dir)
-    loss_log = {'train/loss' : 0.0, 'train/acc (top 1)' : 0.0, 'train/acc (top 3)' : 0.0}
-    time_start = time.time()
-    num_batches = 0
+    logger = TensorboardXLogger(opts.start_epoch, opts.log_iter, opts.log_dir)
+    logger.set(['loss', 'prec1', 'prec3'])
 
     # for choosing the best model
     best_val_prec1 = 0.0
@@ -284,18 +255,8 @@ def train_reddit(opts):
         model.train()
         scheduler.step()
         for i, d in enumerate(train_loader):
-            batch_size = d['q'].shape[0]
-            if use_cuda:
-                d['q'] = d['q'].cuda()
-                d['resp'] = d['resp'].cuda()
-                d['len_q'] = d['len_q'].cuda()
-                d['len_resp'] = d['len_resp'].cuda()
-                d['label'] = d['label'].cuda()
-
-            out = model.rank_responses(d['q'], d['resp'], d['len_q'], d['len_resp'])
-            loss = criterion(out, d['label'])
-            prec1, prec3 = accuracy(out, d['label'], topk=(1, 3))
-
+            
+            loss, prec1, prec3 = run_reddit_iter(d, model, criterion)
             # perform update
             optimizer.zero_grad()
             loss.backward()
@@ -303,37 +264,11 @@ def train_reddit(opts):
             optimizer.step()
 
             # log the losses
-            n_iter += 1
-            num_batches += 1
-            loss_log['train/loss'] += loss.data.cpu().item()
-            loss_log['train/acc (top 1)'] += prec1.data.cpu().item()
-            loss_log['train/acc (top 3)'] += prec3.data.cpu().item()
-
-            if num_batches != 0 and n_iter % opts.log_iter == 0:
-                time_end = time.time()
-                time_taken = time_end - time_start
-                avg_train_loss = loss_log['train/loss'] / num_batches
-                avg_train_prec1 = loss_log['train/acc (top 1)'] / num_batches
-                avg_train_prec3 = loss_log['train/acc (top 3)'] / num_batches
-
-                print ("epoch: %d, updates: %d, time: %.2f, train_loss: %.5f, train_prec1: %.5f, train_prec3: %.5f" % (epoch, n_iter, \
-                    time_taken, avg_train_loss, avg_train_prec1, avg_train_prec3))
-                # writing values to SummaryWriter
-                writer.add_scalar('train/loss', avg_train_loss, n_iter)
-                writer.add_scalar('train/acc (top 1)', avg_train_prec1, n_iter)
-                writer.add_scalar('train/acc (top 3)', avg_train_prec3, n_iter)
-                # reset values back
-                loss_log = {'train/loss' : 0.0, 'train/acc (top 1)' : 0.0, 'train/acc (top 3)' : 0.0}
-                num_batches = 0.0
-                time_start = time.time()
+            logger.update(loss, prec1, prec3)
 
         val_loss, val_prec1, val_prec3, time_taken = evaluate_model_reddit(opts, model, valid_loader, criterion)
-        print ("epoch: %d, updates: %d, time: %.2f, valid_loss: %.5f, valid_prec1: %.5f, valid_prec3: %.5f" % (epoch, n_iter, \
-                time_taken, val_loss, val_prec1, val_prec3))
-        # writing values to SummaryWriter
-        writer.add_scalar('val/loss', val_loss, n_iter)
-        writer.add_scalar('val/acc (top 1)', val_prec1, n_iter)
-        writer.add_scalar('val/acc (top 3)', val_prec3, n_iter)
+        # log the validation losses
+        logger.log_valid(time_taken, val_loss, val_prec1, val_prec3)
         print ('')
 
         # Save the model to disk
