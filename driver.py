@@ -105,7 +105,7 @@ def evaluate_model_reddit(opts, model, loader, criterion):
     avg_valid_prec3 = val_prec3 / num_batches
     time_taken = time.time() - time_start
 
-    return avg_valid_loss, avg_valid_prec1, avg_train_prec3, time_taken
+    return avg_valid_loss, avg_valid_prec1, avg_valid_prec3, time_taken
 
 def train_quora(opts):
 
