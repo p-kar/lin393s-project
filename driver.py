@@ -19,6 +19,7 @@ from utils.arguments import get_args
 from utils.misc import set_random_seeds
 from utils.logger import TensorboardXLogger
 from utils.dataset import QuoraQuestionPairsDataset, RedditCommentPairsDataset, collate_data
+from utils.dataloader import MultiLoader
 from models.baselines import *
 from models.decomposable_attention import DecomposableAttention
 from models.ESIMMultiTask import ESIMMultiTask
@@ -298,6 +299,110 @@ def train_reddit(opts):
         model_path = os.path.join(opts.save_path, 'model_latest.net')
         torch.save(save_state, model_path)
 
+def train_multitask(opts):
+
+    qtrain_dataset = QuoraQuestionPairsDataset(os.path.join(opts.data_dir, 'quora'), split='train', \
+        glove_emb_file=opts.glove_emb_file, maxlen=opts.maxlen)
+    qvalid_dataset = QuoraQuestionPairsDataset(os.path.join(opts.data_dir, 'quora'), split='val', \
+        glove_emb_file=opts.glove_emb_file, maxlen=opts.maxlen)
+
+    qtrain_loader = DataLoader(qtrain_dataset, batch_size=opts.bsize, shuffle=opts.shuffle, \
+        num_workers=opts.nworkers, pin_memory=True)
+    qvalid_loader = DataLoader(qvalid_dataset, batch_size=opts.bsize, shuffle=opts.shuffle, \
+        num_workers=opts.nworkers, pin_memory=True)
+
+    rtrain_dataset = RedditCommentPairsDataset(os.path.join(opts.data_dir, 'reddit'), split='train', \
+        glove_emb_file=opts.glove_emb_file, maxlen=opts.maxlen, K=opts.n_candidate_resp)
+    rvalid_dataset = RedditCommentPairsDataset(os.path.join(opts.data_dir, 'reddit'), split='val', \
+        glove_emb_file=opts.glove_emb_file, maxlen=opts.maxlen, K=opts.n_candidate_resp)
+
+    rtrain_loader = DataLoader(rtrain_dataset, batch_size=opts.bsize, shuffle=opts.shuffle, \
+        num_workers=opts.nworkers, pin_memory=True)
+    rvalid_loader = DataLoader(rvalid_dataset, batch_size=opts.bsize, shuffle=opts.shuffle, \
+        num_workers=opts.nworkers, pin_memory=True)
+
+    train_loader = MultiLoader(qtrain_loader, rtrain_loader)
+
+    if opts.arch == 'esim_multitask':
+        model = ESIMMultiTask(hidden_size=opts.hidden_size, dropout_p=opts.dropout_p, \
+            glove_emb_file=opts.glove_emb_file, pretrained_emb=opts.pretrained_emb)
+    else:
+        raise NotImplementedError('unsupported model architecture')
+
+    if opts.optim == 'adam':
+        optimizer = torch.optim.Adam(model.parameters(), opts.lr, weight_decay=opts.wd)
+    elif opts.optim == 'sgd':
+        optimizer = torch.optim.SGD(model.parameters(), opts.lr, momentum=opts.momentum, weight_decay=opts.wd)
+    else:
+        raise NotImplementedError('Unknown optimizer type')
+
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=opts.lr_decay_step, gamma=opts.lr_decay_gamma)
+    criterion = nn.CrossEntropyLoss()
+    
+    if use_cuda:
+        model = model.cuda()
+        criterion = criterion.cuda()
+
+    # for logging
+    logger = TensorboardXLogger(opts.start_epoch, opts.log_iter, opts.log_dir)
+    logger.set(['loss', 'acc', 'prec1', 'prec3'])
+
+    # for choosing the best model
+    best_val_acc = 0.0
+
+    for epoch in range(opts.start_epoch, opts.epochs):
+        model.train()
+        scheduler.step()
+        logger.step()
+        for i, d in enumerate(train_loader):
+            dq = d[0]
+            dr = d[1]
+            loss_q, acc = run_quora_iter(dq, model, criterion)
+            loss_r, prec1, prec3 = run_reddit_iter(dr, model, criterion)
+            loss = loss_q + loss_r
+            # perform update
+            optimizer.zero_grad()
+            loss.backward()
+            nn.utils.clip_grad_norm_(model.parameters(), opts.max_norm)
+            optimizer.step()
+            # log the losses
+            logger.update(loss, acc, prec1, prec3)
+
+        val_loss_q, val_acc, time_taken_q = evaluate_model_quora(opts, model, qvalid_loader, criterion)
+        val_loss_r, val_prec1, val_prec3, time_taken_r = evaluate_model_reddit(opts, model, rvalid_loader, criterion)
+        val_loss = val_loss_q + val_loss_r
+        time_taken = time_taken_q + time_taken_r
+        # log the validation losses
+        logger.log_valid(time_taken, val_loss, val_acc, val_prec1, val_prec3)
+        print ('')
+
+        # Save the model to disk
+        if val_acc >= best_val_acc:
+            best_val_acc = val_acc
+            save_state = {
+                'epoch': epoch,
+                'state_dict': model.state_dict(),
+                'optimizer': optimizer.state_dict(),
+                'n_iter': logger.n_iter,
+                'opts': opts,
+                'val_acc': val_acc,
+                'best_val_acc': best_val_acc
+            }
+            model_path = os.path.join(opts.save_path, 'model_best.net')
+            torch.save(save_state, model_path)
+
+        save_state = {
+            'epoch': epoch,
+            'state_dict': model.state_dict(),
+            'optimizer': optimizer.state_dict(),
+            'n_iter': logger.n_iter,
+            'opts': opts,
+            'val_acc': val_acc,
+            'best_val_acc': best_val_acc
+        }
+        model_path = os.path.join(opts.save_path, 'model_latest.net')
+        torch.save(save_state, model_path)
+
 if __name__ == '__main__':
 
     opts = get_args()
@@ -309,5 +414,7 @@ if __name__ == '__main__':
     elif opts.mode == 'train_reddit':
         opts.data_dir = os.path.join(opts.data_dir, 'reddit')
         train_reddit(opts)
+    elif opts.mode == 'train_multitask':
+        train_multitask(opts)
     else:
         raise NotImplementedError('unrecognized mode')

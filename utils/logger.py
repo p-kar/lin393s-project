@@ -65,5 +65,5 @@ class TensorboardXLogger:
 			self.writer.add_scalar('val/' + k, v, self.n_iter)
 
 		log_str = 'epoch: %d, updates: %d, time: %.2f, ' + ', '.join(['val_' + k + ': %.5f' for k in self.log_keys])
-		print (log_str % (self.epoch, self.n_iter, time_taken, *values))
+		print (log_str % (self.epoch, self.n_iter, time_taken, *vals))
 
