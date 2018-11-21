@@ -10,7 +10,7 @@ from utils.misc import loadGloveFile
 class LSTMWithConcatBaseline(nn.Module):
 
 	def __init__(self, hidden_size=300, num_layers=1, bidirectional=False, \
-		glove_emb_file='./data/glove.6B/glove.6B.50d.txt', pretrained_emb=True):
+		glove_loader=None, pretrained_emb=True):
 		"""
 		"""
 		super(LSTMWithConcatBaseline, self).__init__()
@@ -21,7 +21,7 @@ class LSTMWithConcatBaseline(nn.Module):
 		if bidirectional:
 			raise NotImplementedError('don\'t support bidirectional LSTMs')
 
-		_, _, word_vectors = loadGloveFile(glove_emb_file)
+		word_vectors = glove_loader.word_vectors
 		word_vectors = np.vstack(word_vectors)
 		vocab_size = word_vectors.shape[0]
 		embed_size = word_vectors.shape[1]
@@ -70,7 +70,7 @@ class LSTMWithConcatBaseline(nn.Module):
 class LSTMWithDistAngleBaseline(nn.Module):
 
 	def __init__(self, hidden_size=300, num_layers=1, bidirectional=False, \
-		glove_emb_file='./data/glove.6B/glove.6B.50d.txt', pretrained_emb=True):
+		glove_loader=None, pretrained_emb=True):
 		"""
 		"""
 		super(LSTMWithDistAngleBaseline, self).__init__()
@@ -79,7 +79,7 @@ class LSTMWithDistAngleBaseline(nn.Module):
 		if bidirectional:
 			raise NotImplementedError('don\'t support bidirectional LSTMs')
 
-		_, _, word_vectors = loadGloveFile(glove_emb_file)
+		word_vectors = glove_loader.word_vectors
 		word_vectors = np.vstack(word_vectors)
 		vocab_size = word_vectors.shape[0]
 		embed_size = word_vectors.shape[1]

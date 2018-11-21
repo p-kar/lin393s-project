@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import numpy as np
 
 sys.path.append("..")
-from utils.misc import loadGloveFile, ixvr
+from utils.misc import ixvr
 
 class AttendFeedForward(nn.Module):
 	"""
@@ -136,12 +136,12 @@ class ESIMMultiTask(nn.Module):
 	semantic question matching task.
 	"""
 	def __init__(self, hidden_size=200, dropout_p=0.2, \
-		glove_emb_file='./data/glove.6B/glove.6B.50d.txt', pretrained_emb=True):
+		glove_loader=None, pretrained_emb=True):
 		"""
 		Args:
 			hidden_size: Size of the intermediate linear layers
 			dropout_p: Dropout probability for intermediate dropout layers
-			glove_emb_file: Location of the pretrained GloVe embeddings
+			glove_loader: GLoVe embedding loader
 			pretrained_emb: Use pretrained embeddings
 		"""
 		super(ESIMMultiTask, self).__init__()
@@ -149,7 +149,7 @@ class ESIMMultiTask(nn.Module):
 		if not pretrained_emb:
 			raise NotImplementedError('always loads pretrained embeddings')
 
-		_, _, word_vectors = loadGloveFile(glove_emb_file)
+		word_vectors = glove_loader.word_vectors
 		word_vectors = np.vstack(word_vectors)
 		vocab_size = word_vectors.shape[0]
 		embed_size = word_vectors.shape[1]

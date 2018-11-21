@@ -50,6 +50,11 @@ def loadGloveFile(fname):
 
     return word_to_index, index_to_word, word_vectors
 
+class GloveLoader:
+    def __init__(self, glove_emb_file):
+        self.word_to_index, self.index_to_word, self.word_vectors = loadGloveFile(glove_emb_file)
+        self.embed_size = self.word_vectors[0].shape[0]
+
 def ixvr(input_layer, bias_val=0.01):
     # If the layer is an LSTM
     if str(type(input_layer)) == "<class 'torch.nn.modules.rnn.LSTM'>":

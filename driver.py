@@ -16,7 +16,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
 from utils.arguments import get_args
-from utils.misc import set_random_seeds
+from utils.misc import set_random_seeds, GloveLoader
 from utils.logger import TensorboardXLogger
 from utils.dataset import QuoraQuestionPairsDataset, RedditCommentPairsDataset, collate_data
 from utils.dataloader import MultiLoader
@@ -121,10 +121,12 @@ def evaluate_model_reddit(opts, model, loader, criterion):
 
 def train_quora(opts):
 
+    glove_loader = GloveLoader(glove_emb_file=opts.glove_emb_file)
+
     train_dataset = QuoraQuestionPairsDataset(opts.data_dir, split='train', \
-        glove_emb_file=opts.glove_emb_file, maxlen=opts.maxlen)
+        glove_loader=glove_loader, maxlen=opts.maxlen)
     valid_dataset = QuoraQuestionPairsDataset(opts.data_dir, split='val', \
-        glove_emb_file=opts.glove_emb_file, maxlen=opts.maxlen)
+        glove_loader=glove_loader, maxlen=opts.maxlen)
 
     train_loader = DataLoader(train_dataset, batch_size=opts.bsize, shuffle=opts.shuffle, \
         num_workers=opts.nworkers, pin_memory=True)
@@ -133,16 +135,16 @@ def train_quora(opts):
 
     if opts.arch == 'lstm_concat':
         model = LSTMWithConcatBaseline(hidden_size=opts.hidden_size, num_layers=opts.num_layers, \
-            bidirectional=opts.bidirectional, glove_emb_file=opts.glove_emb_file, pretrained_emb=opts.pretrained_emb)
+            bidirectional=opts.bidirectional, glove_loader=glove_loader, pretrained_emb=opts.pretrained_emb)
     elif opts.arch == 'lstm_dist_angle':
         model = LSTMWithDistAngleBaseline(hidden_size=opts.hidden_size, num_layers=opts.num_layers, \
-            bidirectional=opts.bidirectional, glove_emb_file=opts.glove_emb_file, pretrained_emb=opts.pretrained_emb)
+            bidirectional=opts.bidirectional, glove_loader=glove_loader, pretrained_emb=opts.pretrained_emb)
     elif opts.arch == 'decomp_attention':
         model = DecomposableAttention(hidden_size=opts.hidden_size, dropout_p=opts.dropout_p, \
-            glove_emb_file=opts.glove_emb_file, pretrained_emb=opts.pretrained_emb)
+            glove_loader=glove_loader, pretrained_emb=opts.pretrained_emb)
     elif opts.arch == 'esim_multitask':
         model = ESIMMultiTask(hidden_size=opts.hidden_size, dropout_p=opts.dropout_p, \
-            glove_emb_file=opts.glove_emb_file, pretrained_emb=opts.pretrained_emb)
+            glove_loader=glove_loader, pretrained_emb=opts.pretrained_emb)
     else:
         raise NotImplementedError('unsupported model architecture')
 
@@ -215,10 +217,12 @@ def train_quora(opts):
 
 def train_reddit(opts):
 
+    glove_loader = GloveLoader(glove_emb_file=opts.glove_emb_file)
+
     train_dataset = RedditCommentPairsDataset(opts.data_dir, split='train', \
-        glove_emb_file=opts.glove_emb_file, maxlen=opts.maxlen, K=opts.n_candidate_resp)
+        glove_loader=glove_loader, maxlen=opts.maxlen, K=opts.n_candidate_resp)
     valid_dataset = RedditCommentPairsDataset(opts.data_dir, split='val', \
-        glove_emb_file=opts.glove_emb_file, maxlen=opts.maxlen, K=opts.n_candidate_resp)
+        glove_loader=glove_loader, maxlen=opts.maxlen, K=opts.n_candidate_resp)
 
     train_loader = DataLoader(train_dataset, batch_size=opts.bsize, shuffle=opts.shuffle, \
         num_workers=opts.nworkers, pin_memory=True)
@@ -227,7 +231,7 @@ def train_reddit(opts):
 
     if opts.arch == 'esim_multitask':
         model = ESIMMultiTask(hidden_size=opts.hidden_size, dropout_p=opts.dropout_p, \
-            glove_emb_file=opts.glove_emb_file, pretrained_emb=opts.pretrained_emb)
+            glove_loader=glove_loader, pretrained_emb=opts.pretrained_emb)
     else:
         raise NotImplementedError('unsupported model architecture')
 
@@ -301,10 +305,12 @@ def train_reddit(opts):
 
 def train_multitask(opts):
 
+    glove_loader = GloveLoader(glove_emb_file=opts.glove_emb_file)
+
     qtrain_dataset = QuoraQuestionPairsDataset(os.path.join(opts.data_dir, 'quora'), split='train', \
-        glove_emb_file=opts.glove_emb_file, maxlen=opts.maxlen)
+        glove_loader=glove_loader, maxlen=opts.maxlen)
     qvalid_dataset = QuoraQuestionPairsDataset(os.path.join(opts.data_dir, 'quora'), split='val', \
-        glove_emb_file=opts.glove_emb_file, maxlen=opts.maxlen)
+        glove_loader=glove_loader, maxlen=opts.maxlen)
 
     qtrain_loader = DataLoader(qtrain_dataset, batch_size=opts.bsize, shuffle=opts.shuffle, \
         num_workers=opts.nworkers, pin_memory=True)
@@ -312,20 +318,20 @@ def train_multitask(opts):
         num_workers=opts.nworkers, pin_memory=True)
 
     rtrain_dataset = RedditCommentPairsDataset(os.path.join(opts.data_dir, 'reddit'), split='train', \
-        glove_emb_file=opts.glove_emb_file, maxlen=opts.maxlen, K=opts.n_candidate_resp)
+        glove_loader=glove_loader, maxlen=opts.maxlen, K=opts.n_candidate_resp)
     rvalid_dataset = RedditCommentPairsDataset(os.path.join(opts.data_dir, 'reddit'), split='val', \
-        glove_emb_file=opts.glove_emb_file, maxlen=opts.maxlen, K=opts.n_candidate_resp)
+        glove_loader=glove_loader, maxlen=opts.maxlen, K=opts.n_candidate_resp)
 
     rtrain_loader = DataLoader(rtrain_dataset, batch_size=opts.bsize, shuffle=opts.shuffle, \
         num_workers=opts.nworkers, pin_memory=True)
     rvalid_loader = DataLoader(rvalid_dataset, batch_size=opts.bsize, shuffle=opts.shuffle, \
         num_workers=opts.nworkers, pin_memory=True)
 
-    train_loader = MultiLoader(qtrain_loader, rtrain_loader)
+    train_loader = MultiLoader([qtrain_loader, rtrain_loader])
 
     if opts.arch == 'esim_multitask':
         model = ESIMMultiTask(hidden_size=opts.hidden_size, dropout_p=opts.dropout_p, \
-            glove_emb_file=opts.glove_emb_file, pretrained_emb=opts.pretrained_emb)
+            glove_loader=glove_loader, pretrained_emb=opts.pretrained_emb)
     else:
         raise NotImplementedError('unsupported model architecture')
 
@@ -338,7 +344,7 @@ def train_multitask(opts):
 
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=opts.lr_decay_step, gamma=opts.lr_decay_gamma)
     criterion = nn.CrossEntropyLoss()
-    
+
     if use_cuda:
         model = model.cuda()
         criterion = criterion.cuda()

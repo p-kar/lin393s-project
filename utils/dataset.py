@@ -69,12 +69,11 @@ def collate_data(batch):
 class QuoraQuestionPairsDataset(Dataset):
 	"""Quora Question Pairs Dataset"""
 
-	def __init__(self, root='./data/quora', split='train', glove_emb_file='./data/glove.6B/glove.6B.50d.txt', \
-		maxlen=30):
+	def __init__(self, root='./data/quora', split='train', glove_loader=None, maxlen=30):
 		
-		self.word_to_index, self.index_to_word, self.word_vectors = loadGloveFile(glove_emb_file)
+		self.word_to_index = glove_loader.word_to_index
 		self.split = split
-		self.glove_vec_size = self.word_vectors[0].shape[0]
+		self.glove_vec_size = glove_loader.embed_size
 		self.data_file = os.path.join(root, split + '.csv')
 		self.data = readQuoraDataFile(self.data_file)
 		self.maxlen = maxlen
@@ -105,12 +104,11 @@ class QuoraQuestionPairsDataset(Dataset):
 class RedditCommentPairsDataset(Dataset):
 	"""Reddit Comment Pairs Dataset"""
 
-	def __init__(self, root='./data/reddit', split='train', glove_emb_file='./data/glove.6B/glove.6B.50d.txt', \
-		maxlen=30, K=10):
+	def __init__(self, root='./data/reddit', split='train', glove_loader=None, maxlen=30, K=10):
 
-		self.word_to_index, self.index_to_word, self.word_vectors = loadGloveFile(glove_emb_file)
+		self.word_to_index = glove_loader.word_to_index
 		self.split = split
-		self.glove_vec_size = self.word_vectors[0].shape[0]
+		self.glove_vec_size = glove_loader.embed_size
 		self.data_file = os.path.join(root, split + '.csv')
 		self.data = readRedditDataFile(self.data_file)
 		self.maxlen = maxlen

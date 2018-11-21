@@ -147,13 +147,12 @@ class DecomposableAttention(nn.Module):
 	Implementation of Decomposable Attention Model as described in
 	https://arxiv.org/pdf/1606.01933.pdf
 	"""
-	def __init__(self, hidden_size=200, dropout_p=0.2, \
-		glove_emb_file='./data/glove.6B/glove.6B.50d.txt', pretrained_emb=True):
+	def __init__(self, hidden_size=200, dropout_p=0.2, glove_loader=None, pretrained_emb=True):
 		"""
 		Args:
 			hidden_size: Size of the intermediate linear layers
 			dropout_p: Dropout probability for intermediate dropout layers
-			glove_emb_file: Location of the pretrained GloVe embeddings
+			glove_loader: GLoVe embedding loader
 			pretrained_emb: Use pretrained embeddings
 		"""
 		super(DecomposableAttention, self).__init__()
@@ -161,7 +160,7 @@ class DecomposableAttention(nn.Module):
 		if not pretrained_emb:
 			raise NotImplementedError('always loads pretrained embeddings')
 
-		_, _, word_vectors = loadGloveFile(glove_emb_file)
+		word_vectors = glove_loader.word_vectors
 		word_vectors = np.vstack(word_vectors)
 		vocab_size = word_vectors.shape[0]
 		embed_size = word_vectors.shape[1]
