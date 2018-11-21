@@ -23,6 +23,7 @@ from utils.dataloader import MultiLoader
 from models.baselines import *
 from models.decomposable_attention import DecomposableAttention
 from models.ESIMMultiTask import ESIMMultiTask
+from models.SSEMultiTask import SSEMultiTask
 
 use_cuda = torch.cuda.is_available()
 
@@ -145,6 +146,9 @@ def train_quora(opts):
     elif opts.arch == 'esim_multitask':
         model = ESIMMultiTask(hidden_size=opts.hidden_size, dropout_p=opts.dropout_p, \
             glove_loader=glove_loader, pretrained_emb=opts.pretrained_emb)
+    elif opts.arch == 'sse_multitask':
+        model = SSEMultiTask(hidden_size=opts.hidden_size, dropout_p=opts.dropout_p, \
+            glove_loader=glove_loader, pretrained_emb=opts.pretrained_emb)
     else:
         raise NotImplementedError('unsupported model architecture')
 
@@ -232,6 +236,9 @@ def train_reddit(opts):
     if opts.arch == 'esim_multitask':
         model = ESIMMultiTask(hidden_size=opts.hidden_size, dropout_p=opts.dropout_p, \
             glove_loader=glove_loader, pretrained_emb=opts.pretrained_emb)
+    elif opts.arch == 'sse_multitask':
+        model = SSEMultiTask(hidden_size=opts.hidden_size, dropout_p=opts.dropout_p, \
+            glove_loader=glove_loader, pretrained_emb=opts.pretrained_emb)
     else:
         raise NotImplementedError('unsupported model architecture')
 
@@ -259,6 +266,7 @@ def train_reddit(opts):
     for epoch in range(opts.start_epoch, opts.epochs):
         model.train()
         scheduler.step()
+        logger.step()
         for i, d in enumerate(train_loader):
             
             loss, prec1, prec3 = run_reddit_iter(d, model, criterion)
@@ -331,6 +339,9 @@ def train_multitask(opts):
 
     if opts.arch == 'esim_multitask':
         model = ESIMMultiTask(hidden_size=opts.hidden_size, dropout_p=opts.dropout_p, \
+            glove_loader=glove_loader, pretrained_emb=opts.pretrained_emb)
+    elif opts.arch == 'sse_multitask':
+        model = SSEMultiTask(hidden_size=opts.hidden_size, dropout_p=opts.dropout_p, \
             glove_loader=glove_loader, pretrained_emb=opts.pretrained_emb)
     else:
         raise NotImplementedError('unsupported model architecture')
