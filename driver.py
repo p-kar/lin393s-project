@@ -303,7 +303,7 @@ def train_reddit(opts):
             'epoch': epoch,
             'state_dict': model.state_dict(),
             'optimizer': optimizer.state_dict(),
-            'n_iter': n_iter,
+            'n_iter': logger.n_iter,
             'opts': opts,
             'val_prec1': val_prec1,
             'best_val_prec1': best_val_prec1

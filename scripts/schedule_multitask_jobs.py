@@ -2,7 +2,7 @@ import os
 import pdb
 import subprocess as sp
 
-OUTPUT_ROOT='/scratch/cluster/pkar/lin393s-project/runs/decomp_attention'
+OUTPUT_ROOT='/scratch/cluster/pkar/lin393s-project/runs/sse_multitask'
 SCRIPT_ROOT='/scratch/cluster/pkar/lin393s-project/scripts/'
 
 mapping_dict = {
@@ -10,24 +10,25 @@ mapping_dict = {
     '__EMAILID__': 'pkar@cs.utexas.edu',
     '__PROJECT__': 'INSTRUCTIONAL',
     # Script parameters
-    '__JOBNAME__': ['decomp_attention_lr_1e-1', 'decomp_attention_lr_3e-1', 'decomp_attention_lr_1e-2', 'decomp_attention_lr_3e-2', 'decomp_attention_lr_1e-3', 'decomp_attention_lr_3e-3', 'decomp_attention_lr_1e-4'],
+    '__JOBNAME__': ['sse_multitask_lr_1e-3', 'sse_multitask_lr_3e-4', 'sse_multitask_lr_1e-4'],
     # Algorithm hyperparameters
     '__CODE_ROOT__': '/scratch/cluster/pkar/lin393s-project',
-    '__MODE__': 'train',
+    '__MODE__': 'train_multitask',
     '__DATA_DIR__': '/scratch/cluster/pkar/lin393s-project/data/',
-    '__NWORKERS__': '4',
-    '__BSIZE__': '64',
+    '__NWORKERS__': '0',
+    '__BSIZE__': '16',
     '__SHUFFLE__': 'True',
     '__GLOVE_EMB_FILE__': '/scratch/cluster/pkar/lin393s-project/data/glove.6B/glove.6B.300d.txt',
     '__MAXLEN__': '60',
-    '__ARCH__': 'decomp_attention',
+    '__N_CANDIDATE_RESP__': '10',
+    '__ARCH__': 'sse_multitask',
     '__HIDDEN_SIZE__': '300',
     '__NUM_LAYERS__': '1',
     '__BIDIRECTIONAL__': 'False',
     '__PRETRAINED_EMB__': 'True',
     '__DROPOUT_P__': '0.2',
     '__OPTIM__': 'adam',
-    '__LR__': ['1e-1', '3e-1', '1e-2', '3e-2', '1e-3', '3e-3', '1e-4'],
+    '__LR__': ['1e-3', '3e-4', '1e-4'],
     '__WD__': '4e-5',
     '__MOMENTUM__': '0.9',
     '__EPOCHS__': '40',
