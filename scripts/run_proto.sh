@@ -9,6 +9,7 @@ python -u $code_root/driver.py \
 	--shuffle __SHUFFLE__ \
 	--glove_emb_file __GLOVE_EMB_FILE__ \
 	--maxlen __MAXLEN__ \
+	--n_candidate_resp __N_CANDIDATE_RESP__ \
 	--arch __ARCH__ \
 	--hidden_size __HIDDEN_SIZE__ \
 	--num_layers __NUM_LAYERS__ \
