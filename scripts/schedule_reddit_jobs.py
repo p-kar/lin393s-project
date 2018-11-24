@@ -2,7 +2,7 @@ import os
 import pdb
 import subprocess as sp
 
-OUTPUT_ROOT='/scratch/cluster/pkar/lin393s-project/runs/sse_reddit_only'
+OUTPUT_ROOT='/scratch/cluster/pkar/lin393s-project/runs/esim_reddit_only'
 SCRIPT_ROOT='/scratch/cluster/pkar/lin393s-project/scripts/'
 
 mapping_dict = {
@@ -10,7 +10,7 @@ mapping_dict = {
     '__EMAILID__': 'pkar@cs.utexas.edu',
     '__PROJECT__': 'INSTRUCTIONAL',
     # Script parameters
-    '__JOBNAME__': ['sse_reddit_only_lr_1e-3', 'sse_reddit_only_lr_3e-4', 'sse_reddit_only_lr_1e-4'],
+    '__JOBNAME__': ['esim_reddit_only_lr_1e-3', 'esim_reddit_only_lr_3e-4', 'esim_reddit_only_lr_1e-4'],
     # Algorithm hyperparameters
     '__CODE_ROOT__': '/scratch/cluster/pkar/lin393s-project',
     '__MODE__': 'train_reddit',
@@ -21,7 +21,7 @@ mapping_dict = {
     '__GLOVE_EMB_FILE__': '/scratch/cluster/pkar/lin393s-project/data/glove.6B/glove.6B.300d.txt',
     '__MAXLEN__': '60',
     '__N_CANDIDATE_RESP__': '10',
-    '__ARCH__': 'sse_multitask',
+    '__ARCH__': 'esim_multitask',
     '__HIDDEN_SIZE__': '300',
     '__NUM_LAYERS__': '1',
     '__BIDIRECTIONAL__': 'False',
