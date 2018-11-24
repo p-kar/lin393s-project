@@ -12,6 +12,7 @@ def get_args():
 
     # Mode
     parser.add_argument('--mode', default='train_quora', type=str, help='mode of the python script')
+    parser.add_argument('--run_folder', default='./runs', type=str, help='folder path where the runs are stored')
 
     # DataLoader
     parser.add_argument('--data_dir', default='./data', type=str, help='root directory of the dataset')

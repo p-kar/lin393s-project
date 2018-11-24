@@ -420,6 +420,114 @@ def train_multitask(opts):
         model_path = os.path.join(opts.save_path, 'model_latest.net')
         torch.save(save_state, model_path)
 
+def print_statistics(opts, data_type='quora', split='test'):
+
+    glove_loader = GloveLoader(glove_emb_file=opts.glove_emb_file)
+
+    if data_type == 'quora':
+        test_dataset = QuoraQuestionPairsDataset(os.path.join(opts.data_dir, 'quora'), split=split, \
+            glove_loader=glove_loader, maxlen=opts.maxlen)
+    elif data_type == 'reddit':
+        test_dataset = RedditCommentPairsDataset(os.path.join(opts.data_dir, 'reddit'), split=split, \
+            glove_loader=glove_loader, maxlen=opts.maxlen, K=opts.n_candidate_resp)
+    else:
+        raise NotImplementedError('Unknown data type')
+
+    loader = DataLoader(test_dataset, batch_size=opts.bsize, shuffle=opts.shuffle, \
+        num_workers=opts.nworkers, pin_memory=True)
+
+    runs = [os.path.abspath(name) for name in os.listdir(opts.run_folder) if os.path.isdir(name)]
+    results = {run: {} for run in runs}
+    best_results = {run: {} for run in runs}
+
+    for run in runs:
+        run_base_dir = os.path.join(opts.run_folder, run)
+        print ('Evaluating jobs in', run_base_dir, '...')
+        jobs = [os.path.abspath(name) for name in os.listdir(run_base_dir) if os.path.isdir(name)]
+        for job in jobs:
+            job_base_dir = os.path.join(run_base_dir, job)
+            model_path = os.path.join(job_base_dir, 'model_best.net')
+            save_state = torch.load(model_path)
+            arch = save_state.opts.arch
+
+            if arch == 'lstm_concat':
+                model = LSTMWithConcatBaseline(hidden_size=save_state.opts.hidden_size, num_layers=save_state.opts.num_layers, \
+                    bidirectional=save_state.opts.bidirectional, glove_loader=glove_loader, pretrained_emb=save_state.opts.pretrained_emb)
+            elif arch == 'lstm_dist_angle':
+                model = LSTMWithDistAngleBaseline(hidden_size=save_state.opts.hidden_size, num_layers=save_state.opts.num_layers, \
+                    bidirectional=save_state.opts.bidirectional, glove_loader=glove_loader, pretrained_emb=save_state.opts.pretrained_emb)
+            elif arch == 'decomp_attention':
+                model = DecomposableAttention(hidden_size=save_state.opts.hidden_size, dropout_p=save_state.opts.dropout_p, \
+                    glove_loader=glove_loader, pretrained_emb=save_state.opts.pretrained_emb)
+            elif arch == 'esim_multitask':
+                model = ESIMMultiTask(hidden_size=save_state.opts.hidden_size, dropout_p=save_state.opts.dropout_p, \
+                    glove_loader=glove_loader, pretrained_emb=save_state.opts.pretrained_emb)
+            elif arch == 'sse_multitask':
+                model = SSEMultiTask(hidden_size=save_state.opts.hidden_size, dropout_p=save_state.opts.dropout_p, \
+                    glove_loader=glove_loader, pretrained_emb=save_state.opts.pretrained_emb)
+            else:
+                raise NotImplementedError('unsupported model architecture')
+
+            model.load_state_dict(save_state.state_dict)
+            criterion = nn.CrossEntropyLoss()
+
+            if use_cuda:
+                model = model.cuda()
+                criterion = criterion.cuda()
+
+            if data_type == 'quora':
+                avg_loss, avg_acc, _ = evaluate_model_quora(opts, model, loader, criterion)
+                results[run][job] = [avg_loss, avg_acc]
+            elif data_type == 'reddit':
+                avg_loss, avg_prec1, avg_prec3, _ = evaluate_model_quora(opts, model, loader, criterion)
+                results[run][job] = [avg_loss, avg_prec1, avg_prec3]
+
+    print('')
+    print('Results:')
+    if data_type == 'quora':
+        print('| %25s | %20s | %12s |' % ('Run', 'Job Name', 'Accuracy'))
+    elif data_type == 'reddit':
+        print('| %25s | %20s | %12s | %12s |' % ('Run', 'Job Name', 'Prec (top1)', 'Prec (top3)'))
+
+    for run in results.keys():
+        for job, value in sorted(results[run].iteritems(), key=lambda (k,v): v[1], reverse=True):
+            if data_type == 'quora':
+                print('| %25s | %20s | %12s |' % (run, job, str(round(value[1], 2))))
+            elif data_type == 'reddit':
+                print('| %25s | %20s | %12s | %12s |' % (run, job, str(round(value[1], 2)), str(round(value[2], 2))))
+
+        if data_type == 'quora':
+            print (''.join(['+'] * 67))
+        elif data_type == 'reddit':
+            print (''.join(['+'] * 82))
+
+    for run in results.keys():
+        best_job = sorted(results[run].iteritems(), key=lambda (k,v): v[1], reverse=True)[0]
+        best_results[run]['job'] = best_job[0]
+        best_results[run]['value'] = best_job[1]
+
+    print('')
+    print('Best Results')
+    if data_type == 'quora':
+        print('| %25s | %20s | %12s |' % ('Run', 'Job Name', 'Accuracy'))
+    elif data_type == 'reddit':
+        print('| %25s | %20s | %12s | %12s |' % ('Run', 'Job Name', 'Prec (top1)', 'Prec (top3)'))
+
+    for run, best_job in sorted(best_results.iteritems(), key=lambda (k, v): v['value'][1], reverse=True):
+        job = best_job['job']
+        value = best_job['value']
+
+        if data_type == 'quora':
+            print('| %25s | %20s | %12s |' % (run, job, str(round(value[1], 2))))
+        elif data_type == 'reddit':
+            print('| %25s | %20s | %12s | %12s |' % (run, job, str(round(value[1], 2)), str(round(value[2], 2))))
+
+    if data_type == 'quora':
+        print (''.join(['+'] * 67))
+    elif data_type == 'reddit':
+        print (''.join(['+'] * 82))
+
+
 if __name__ == '__main__':
 
     opts = get_args()
@@ -433,5 +541,7 @@ if __name__ == '__main__':
         train_reddit(opts)
     elif opts.mode == 'train_multitask':
         train_multitask(opts)
+    elif opts.mode == 'eval_quora':
+        print_statistics(opts, data_type='quora', split='test')
     else:
         raise NotImplementedError('unrecognized mode')
