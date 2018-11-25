@@ -149,6 +149,10 @@ def train_quora(opts):
     elif opts.arch == 'sse_multitask':
         model = SSEMultiTask(hidden_size=opts.hidden_size, dropout_p=opts.dropout_p, \
             glove_loader=glove_loader, pretrained_emb=opts.pretrained_emb)
+    elif opts.arch == 'bimpm_multitask':
+	num_perspective = 2
+	model = BiMPMMultitask(hidden_size=opts.hidden_size, dropout_p=opts.dropout_p, \
+            glove_loader=glove_loader, pretrained_emb=opts.pretrained_emb, num_persepective)
     else:
         raise NotImplementedError('unsupported model architecture')
 
