@@ -24,6 +24,7 @@ from models.baselines import *
 from models.decomposable_attention import DecomposableAttention
 from models.ESIMMultiTask import ESIMMultiTask
 from models.SSEMultiTask import SSEMultiTask
+from models.ESIMBNMultiTask import ESIMBNMultiTask
 
 use_cuda = torch.cuda.is_available()
 
@@ -41,6 +42,39 @@ def accuracy(output, target, topk=(1,)):
         correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
         res.append(correct_k.mul_(1. / batch_size))
     return res
+
+def model_select(opts, glove_loader):
+
+    if opts.mode in ['train_reddit', 'train_multitask'] and opts.arch not in ['esim_multitask', \
+    'sse_multitask', 'esim_bn_multitask']:
+        raise NotImplementedError('unsupported model architecture for mode:', opts.mode)
+
+    if opts.arch == 'lstm_concat':
+        model = LSTMWithConcatBaseline(hidden_size=opts.hidden_size, num_layers=opts.num_layers, \
+            bidirectional=opts.bidirectional, glove_loader=glove_loader, pretrained_emb=opts.pretrained_emb)
+    elif opts.arch == 'lstm_dist_angle':
+        model = LSTMWithDistAngleBaseline(hidden_size=opts.hidden_size, num_layers=opts.num_layers, \
+            bidirectional=opts.bidirectional, glove_loader=glove_loader, pretrained_emb=opts.pretrained_emb)
+    elif opts.arch == 'decomp_attention':
+        model = DecomposableAttention(hidden_size=opts.hidden_size, dropout_p=opts.dropout_p, \
+            glove_loader=glove_loader, pretrained_emb=opts.pretrained_emb)
+    elif opts.arch == 'esim_multitask':
+        model = ESIMMultiTask(hidden_size=opts.hidden_size, dropout_p=opts.dropout_p, \
+            glove_loader=glove_loader, pretrained_emb=opts.pretrained_emb)
+    elif opts.arch == 'sse_multitask':
+        model = SSEMultiTask(hidden_size=opts.hidden_size, dropout_p=opts.dropout_p, \
+            glove_loader=glove_loader, pretrained_emb=opts.pretrained_emb)
+    elif opts.arch == 'bimpm_multitask':
+        num_perspectives = 2
+        model = BiMPMMultitask(hidden_size=opts.hidden_size, dropout_p=opts.dropout_p, \
+            glove_loader=glove_loader, pretrained_emb=opts.pretrained_emb, num_perspectives=num_perspectives)
+    elif opts.arch == 'esim_bn_multitask':
+        model = ESIMBNMultiTask(hidden_size=opts.hidden_size, glove_loader=glove_loader, \
+            pretrained_emb=opts.pretrained_emb)
+    else:
+        raise NotImplementedError('unsupported model architecture')
+
+    return model
 
 def run_quora_iter(d, model, criterion):
     batch_size = d['s1'].shape[0]
@@ -134,27 +168,7 @@ def train_quora(opts):
     valid_loader = DataLoader(valid_dataset, batch_size=opts.bsize, shuffle=opts.shuffle, \
         num_workers=opts.nworkers, pin_memory=True)
 
-    if opts.arch == 'lstm_concat':
-        model = LSTMWithConcatBaseline(hidden_size=opts.hidden_size, num_layers=opts.num_layers, \
-            bidirectional=opts.bidirectional, glove_loader=glove_loader, pretrained_emb=opts.pretrained_emb)
-    elif opts.arch == 'lstm_dist_angle':
-        model = LSTMWithDistAngleBaseline(hidden_size=opts.hidden_size, num_layers=opts.num_layers, \
-            bidirectional=opts.bidirectional, glove_loader=glove_loader, pretrained_emb=opts.pretrained_emb)
-    elif opts.arch == 'decomp_attention':
-        model = DecomposableAttention(hidden_size=opts.hidden_size, dropout_p=opts.dropout_p, \
-            glove_loader=glove_loader, pretrained_emb=opts.pretrained_emb)
-    elif opts.arch == 'esim_multitask':
-        model = ESIMMultiTask(hidden_size=opts.hidden_size, dropout_p=opts.dropout_p, \
-            glove_loader=glove_loader, pretrained_emb=opts.pretrained_emb)
-    elif opts.arch == 'sse_multitask':
-        model = SSEMultiTask(hidden_size=opts.hidden_size, dropout_p=opts.dropout_p, \
-            glove_loader=glove_loader, pretrained_emb=opts.pretrained_emb)
-    elif opts.arch == 'bimpm_multitask':
-	num_perspective = 2
-	model = BiMPMMultitask(hidden_size=opts.hidden_size, dropout_p=opts.dropout_p, \
-            glove_loader=glove_loader, pretrained_emb=opts.pretrained_emb, num_persepective)
-    else:
-        raise NotImplementedError('unsupported model architecture')
+    model = model_select(opts, glove_loader)
 
     if opts.optim == 'adam':
         optimizer = torch.optim.Adam(model.parameters(), opts.lr, weight_decay=opts.wd)
@@ -237,14 +251,7 @@ def train_reddit(opts):
     valid_loader = DataLoader(valid_dataset, batch_size=opts.bsize, shuffle=opts.shuffle, \
         num_workers=opts.nworkers, pin_memory=True)
 
-    if opts.arch == 'esim_multitask':
-        model = ESIMMultiTask(hidden_size=opts.hidden_size, dropout_p=opts.dropout_p, \
-            glove_loader=glove_loader, pretrained_emb=opts.pretrained_emb)
-    elif opts.arch == 'sse_multitask':
-        model = SSEMultiTask(hidden_size=opts.hidden_size, dropout_p=opts.dropout_p, \
-            glove_loader=glove_loader, pretrained_emb=opts.pretrained_emb)
-    else:
-        raise NotImplementedError('unsupported model architecture')
+    model = model_select(opts, glove_loader)
 
     if opts.optim == 'adam':
         optimizer = torch.optim.Adam(model.parameters(), opts.lr, weight_decay=opts.wd)
@@ -341,14 +348,7 @@ def train_multitask(opts):
 
     train_loader = MultiLoader([qtrain_loader, rtrain_loader])
 
-    if opts.arch == 'esim_multitask':
-        model = ESIMMultiTask(hidden_size=opts.hidden_size, dropout_p=opts.dropout_p, \
-            glove_loader=glove_loader, pretrained_emb=opts.pretrained_emb)
-    elif opts.arch == 'sse_multitask':
-        model = SSEMultiTask(hidden_size=opts.hidden_size, dropout_p=opts.dropout_p, \
-            glove_loader=glove_loader, pretrained_emb=opts.pretrained_emb)
-    else:
-        raise NotImplementedError('unsupported model architecture')
+    model = model_select(opts, glove_loader)
 
     if opts.optim == 'adam':
         optimizer = torch.optim.Adam(model.parameters(), opts.lr, weight_decay=opts.wd)
@@ -469,25 +469,8 @@ def print_statistics(opts, data_type='quora', split='test'):
                 save_state = torch.load(model_path)
             else:
                 save_state = torch.load(model_path, map_location='cpu')
-            arch = save_state['opts'].arch
 
-            if arch == 'lstm_concat':
-                model = LSTMWithConcatBaseline(hidden_size=save_state['opts'].hidden_size, num_layers=save_state['opts'].num_layers, \
-                    bidirectional=save_state['opts'].bidirectional, glove_loader=glove_loader, pretrained_emb=save_state['opts'].pretrained_emb)
-            elif arch == 'lstm_dist_angle':
-                model = LSTMWithDistAngleBaseline(hidden_size=save_state['opts'].hidden_size, num_layers=save_state['opts'].num_layers, \
-                    bidirectional=save_state['opts'].bidirectional, glove_loader=glove_loader, pretrained_emb=save_state['opts'].pretrained_emb)
-            elif arch == 'decomp_attention':
-                model = DecomposableAttention(hidden_size=save_state['opts'].hidden_size, dropout_p=save_state['opts'].dropout_p, \
-                    glove_loader=glove_loader, pretrained_emb=save_state['opts'].pretrained_emb)
-            elif arch == 'esim_multitask':
-                model = ESIMMultiTask(hidden_size=save_state['opts'].hidden_size, dropout_p=save_state['opts'].dropout_p, \
-                    glove_loader=glove_loader, pretrained_emb=save_state['opts'].pretrained_emb)
-            elif arch == 'sse_multitask':
-                model = SSEMultiTask(hidden_size=save_state['opts'].hidden_size, dropout_p=save_state['opts'].dropout_p, \
-                    glove_loader=glove_loader, pretrained_emb=save_state['opts'].pretrained_emb)
-            else:
-                raise NotImplementedError('unsupported model architecture')
+            model = model_select(save_state['opts'], glove_loader)
 
             model.load_state_dict(save_state['state_dict'])
             criterion = nn.CrossEntropyLoss()
