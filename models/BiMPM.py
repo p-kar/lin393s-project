@@ -1,16 +1,14 @@
+import pdb
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 
+class BiMPM(nn.Module):
 
-class BiMPMMultitask(nn.Module):
-    
     def __init__(self, hidden_size=200, dropout_p=0.2, \
         glove_loader=None, pretrained_emb=True, num_perspectives=2):
-        
-        super(BiMPMMultitask, self).__init__()
-
+        super(BiMPM, self).__init__()
           
         word_vectors = glove_loader.word_vectors
         word_vectors = np.vstack(word_vectors)
@@ -18,35 +16,14 @@ class BiMPMMultitask(nn.Module):
         self.word_dim = word_vectors.shape[1]
         self.class_size = 2
         self.hidden_size = hidden_size
-        self.dropout = dropout_p
-        
-        self.use_char_emb = 0
-        self.char_vocab_size = 50
-        self.max_word_len = 100
-        self.char_dim = 20
-        self.char_hidden_size = hidden_size
-        
-        
-        
-        self.d = self.word_dim + int(self.use_char_emb) * self.char_hidden_size
-        self.l = num_perspective
+        self.dropout_p = dropout_p
 
-        # ----- Word Representation Layer -----
-        #self.char_emb = nn.Embedding(self.char_vocab_size, args.char_dim, padding_idx=0)
+        self.d = self.word_dim
+        self.l = num_perspectives
 
         self.word_emb = nn.Embedding(self.vocab_size, self.word_dim)
         # initialize word embedding with GloVe
         self.word_emb.load_state_dict({'weight': torch.Tensor(word_vectors)})
-        #self.word_emb.weight.data.copy_(data.TEXT.vocab.vectors)
-        # no fine-tuning for word vectors
-        #self.word_emb.weight.requires_grad = False
-
-#         self.char_LSTM = nn.LSTM(
-#             input_size=self.char_dim,
-#             hidden_size=self.char_hidden_size,
-#             num_layers=1,
-#             bidirectional=False,
-#             batch_first=True)
 
         # ----- Context Representation Layer -----
         self.context_LSTM = nn.LSTM(
@@ -58,9 +35,9 @@ class BiMPMMultitask(nn.Module):
         )
 
         # ----- Matching Layer -----
-#         for i in range(1, 9):
-#             setattr(self, mp_w{i}, \
-#                     nn.Parameter(torch.rand(self.l, self.hidden_size)))
+        for i in range(1, 9):
+            setattr(self, 'mp_w' + str(i), \
+                    nn.Parameter(torch.rand(self.l, self.hidden_size)))
 
         # ----- Aggregation Layer -----
         self.aggregation_LSTM = nn.LSTM(
@@ -79,57 +56,43 @@ class BiMPMMultitask(nn.Module):
 
     def reset_parameters(self):
         # ----- Word Representation Layer -----
-        nn.init.uniform(self.char_emb.weight, -0.005, 0.005)
-        # zero vectors for padding
-        
-        
-        self.char_emb.weight.data[0].fill_(0)
-
-        
-        # <unk> vectors is randomly initialized
-#         nn.init.uniform(self.word_emb.weight.data[0], -0.1, 0.1)
-
-#         nn.init.kaiming_normal(self.char_LSTM.weight_ih_l0)
-#         nn.init.constant(self.char_LSTM.bias_ih_l0, val=0)
-#         nn.init.orthogonal(self.char_LSTM.weight_hh_l0)
-#         nn.init.constant(self.char_LSTM.bias_hh_l0, val=0)
 
         # ----- Context Representation Layer -----
-        nn.init.kaiming_normal(self.context_LSTM.weight_ih_l0)
-        nn.init.constant(self.context_LSTM.bias_ih_l0, val=0)
-        nn.init.orthogonal(self.context_LSTM.weight_hh_l0)
-        nn.init.constant(self.context_LSTM.bias_hh_l0, val=0)
+        nn.init.kaiming_normal_(self.context_LSTM.weight_ih_l0)
+        nn.init.constant_(self.context_LSTM.bias_ih_l0, val=0)
+        nn.init.orthogonal_(self.context_LSTM.weight_hh_l0)
+        nn.init.constant_(self.context_LSTM.bias_hh_l0, val=0)
 
-        nn.init.kaiming_normal(self.context_LSTM.weight_ih_l0_reverse)
-        nn.init.constant(self.context_LSTM.bias_ih_l0_reverse, val=0)
-        nn.init.orthogonal(self.context_LSTM.weight_hh_l0_reverse)
-        nn.init.constant(self.context_LSTM.bias_hh_l0_reverse, val=0)
+        nn.init.kaiming_normal_(self.context_LSTM.weight_ih_l0_reverse)
+        nn.init.constant_(self.context_LSTM.bias_ih_l0_reverse, val=0)
+        nn.init.orthogonal_(self.context_LSTM.weight_hh_l0_reverse)
+        nn.init.constant_(self.context_LSTM.bias_hh_l0_reverse, val=0)
 
         # ----- Matching Layer -----
-#         for i in range(1, 9):
-#             w = getattr(self, f'mp_w{i}')
-#             nn.init.kaiming_normal(w)
+        for i in range(1, 9):
+            w = getattr(self, 'mp_w' + str(i))
+            nn.init.kaiming_normal_(w)
 
         # ----- Aggregation Layer -----
-        nn.init.kaiming_normal(self.aggregation_LSTM.weight_ih_l0)
-        nn.init.constant(self.aggregation_LSTM.bias_ih_l0, val=0)
-        nn.init.orthogonal(self.aggregation_LSTM.weight_hh_l0)
-        nn.init.constant(self.aggregation_LSTM.bias_hh_l0, val=0)
+        nn.init.kaiming_normal_(self.aggregation_LSTM.weight_ih_l0)
+        nn.init.constant_(self.aggregation_LSTM.bias_ih_l0, val=0)
+        nn.init.orthogonal_(self.aggregation_LSTM.weight_hh_l0)
+        nn.init.constant_(self.aggregation_LSTM.bias_hh_l0, val=0)
 
-        nn.init.kaiming_normal(self.aggregation_LSTM.weight_ih_l0_reverse)
-        nn.init.constant(self.aggregation_LSTM.bias_ih_l0_reverse, val=0)
-        nn.init.orthogonal(self.aggregation_LSTM.weight_hh_l0_reverse)
-        nn.init.constant(self.aggregation_LSTM.bias_hh_l0_reverse, val=0)
+        nn.init.kaiming_normal_(self.aggregation_LSTM.weight_ih_l0_reverse)
+        nn.init.constant_(self.aggregation_LSTM.bias_ih_l0_reverse, val=0)
+        nn.init.orthogonal_(self.aggregation_LSTM.weight_hh_l0_reverse)
+        nn.init.constant_(self.aggregation_LSTM.bias_hh_l0_reverse, val=0)
 
         # ----- Prediction Layer ----
-        nn.init.uniform(self.pred_fc1.weight, -0.005, 0.005)
-        nn.init.constant(self.pred_fc1.bias, val=0)
+        nn.init.uniform_(self.pred_fc1.weight, -0.005, 0.005)
+        nn.init.constant_(self.pred_fc1.bias, val=0)
 
-        nn.init.uniform(self.pred_fc2.weight, -0.005, 0.005)
-        nn.init.constant(self.pred_fc2.bias, val=0)
+        nn.init.uniform_(self.pred_fc2.weight, -0.005, 0.005)
+        nn.init.constant_(self.pred_fc2.bias, val=0)
 
     def dropout(self, v):
-        return F.dropout(v, p=self.dropout, training=self.training)
+        return F.dropout(v, p=self.dropout_p, training=self.training)
 
     def forward(self, s1, s2, len1, len2):
         # ----- Matching Layer -----
@@ -141,24 +104,6 @@ class BiMPMMultitask(nn.Module):
             :return: (batch, l)
             """
             seq_len = v1.size(1)
-
-            # Trick for large memory requirement
-            """
-            if len(v2.size()) == 2:
-                v2 = torch.stack([v2] * seq_len, dim=1)
-
-            m = []
-            for i in range(self.l):
-                # v1: (batch, seq_len, hidden_size)
-                # v2: (batch, seq_len, hidden_size)
-                # w: (1, 1, hidden_size)
-                # -> (batch, seq_len)
-                m.append(F.cosine_similarity(w[i].view(1, 1, -1) * v1, w[i].view(1, 1, -1) * v2, dim=2))
-
-            # list of (batch, seq_len) -> (batch, seq_len, l)
-            m = torch.stack(m, dim=2)
-            """
-
             # (1, 1, hidden_size, l)
             w = w.transpose(1, 0).unsqueeze(0).unsqueeze(0)
             # (batch, seq_len, hidden_size, l)
@@ -179,29 +124,6 @@ class BiMPMMultitask(nn.Module):
             :param w: (l, hidden_size)
             :return: (batch, l, seq_len1, seq_len2)
             """
-
-            # Trick for large memory requirement
-            """
-            m = []
-            for i in range(self.l):
-                # (1, 1, hidden_size)
-                w_i = w[i].view(1, 1, -1)
-                # (batch, seq_len1, hidden_size), (batch, seq_len2, hidden_size)
-                v1, v2 = w_i * v1, w_i * v2
-                # (batch, seq_len, hidden_size->1)
-                v1_norm = v1.norm(p=2, dim=2, keepdim=True)
-                v2_norm = v2.norm(p=2, dim=2, keepdim=True)
-
-                # (batch, seq_len1, seq_len2)
-                n = torch.matmul(v1, v2.permute(0, 2, 1))
-                d = v1_norm * v2_norm.permute(0, 2, 1)
-
-                m.append(div_with_small_value(n, d))
-
-            # list of (batch, seq_len1, seq_len2) -> (batch, seq_len1, seq_len2, l)
-            m = torch.stack(m, dim=3)
-            """
-
             # (1, l, 1, hidden_size)
             w = w.unsqueeze(0).unsqueeze(2)
             # (batch, l, seq_len, hidden_size)
@@ -225,7 +147,6 @@ class BiMPMMultitask(nn.Module):
             :param v2: (batch, seq_len2, hidden_size)
             :return: (batch, seq_len1, seq_len2)
             """
-
             # (batch, seq_len1, 1)
             v1_norm = v1.norm(p=2, dim=2, keepdim=True)
             # (batch, 1, seq_len2)
@@ -247,26 +168,6 @@ class BiMPMMultitask(nn.Module):
 
         p = self.word_emb(s1)
         h = self.word_emb(s2)
-
-        if self.args.use_char_emb:
-            # (batch, seq_len, max_word_len) -> (batch * seq_len, max_word_len)
-            seq_len_p = len1
-            seq_len_h = len2
-
-            char_p = s1.view(-1, self.max_word_len)
-            char_h = s2.view(-1, self.max_word_len)
-
-            # (batch * seq_len, max_word_len, char_dim)-> (1, batch * seq_len, char_hidden_size)
-            _, (char_p, _) = self.char_LSTM(self.char_emb(char_p))
-            _, (char_h, _) = self.char_LSTM(self.char_emb(char_h))
-
-            # (batch, seq_len, char_hidden_size)
-            char_p = char_p.view(-1, seq_len_p, self.char_hidden_size)
-            char_h = char_h.view(-1, seq_len_h, self.char_hidden_size)
-
-            # (batch, seq_len, word_dim + char_hidden_size)
-            p = torch.cat([p, char_p], dim=-1)
-            h = torch.cat([h, char_h], dim=-1)
 
         p = self.dropout(p)
         h = self.dropout(h)
@@ -373,7 +274,7 @@ class BiMPMMultitask(nn.Module):
         x = self.dropout(x)
 
         # ----- Prediction Layer -----
-        x = F.tanh(self.pred_fc1(x))
+        x = torch.tanh(self.pred_fc1(x))
         x = self.dropout(x)
         x = self.pred_fc2(x)
 
