@@ -183,8 +183,7 @@ class ESIMBNMultiTask(nn.Module):
 
 	def reset_parameters(self):
 		"""Initialize network weights using Xavier init (with bias 0.01)"""
-
-		self. apply(ixvr)
+		self.apply(ixvr)
 
 	def forward(self, s1, s2, len1, len2):
 		"""

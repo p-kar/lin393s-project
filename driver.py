@@ -21,9 +21,10 @@ from utils.logger import TensorboardXLogger
 from utils.dataset import QuoraQuestionPairsDataset, RedditCommentPairsDataset, collate_data
 from utils.dataloader import MultiLoader
 from models.baselines import *
+from models.BiMPM import BiMPM
 from models.decomposable_attention import DecomposableAttention
-from models.ESIMMultiTask import ESIMMultiTask
 from models.SSEMultiTask import SSEMultiTask
+from models.ESIMMultiTask import ESIMMultiTask
 from models.ESIMBNMultiTask import ESIMBNMultiTask
 
 use_cuda = torch.cuda.is_available()
@@ -58,16 +59,15 @@ def model_select(opts, glove_loader):
     elif opts.arch == 'decomp_attention':
         model = DecomposableAttention(hidden_size=opts.hidden_size, dropout_p=opts.dropout_p, \
             glove_loader=glove_loader, pretrained_emb=opts.pretrained_emb)
+    elif opts.arch == 'bimpm':
+        model = BiMPM(hidden_size=opts.hidden_size, dropout_p=opts.dropout_p, \
+            glove_loader=glove_loader, pretrained_emb=opts.pretrained_emb)
     elif opts.arch == 'esim_multitask':
         model = ESIMMultiTask(hidden_size=opts.hidden_size, dropout_p=opts.dropout_p, \
             glove_loader=glove_loader, pretrained_emb=opts.pretrained_emb)
     elif opts.arch == 'sse_multitask':
         model = SSEMultiTask(hidden_size=opts.hidden_size, dropout_p=opts.dropout_p, \
             glove_loader=glove_loader, pretrained_emb=opts.pretrained_emb)
-    elif opts.arch == 'bimpm_multitask':
-        num_perspectives = 2
-        model = BiMPMMultitask(hidden_size=opts.hidden_size, dropout_p=opts.dropout_p, \
-            glove_loader=glove_loader, pretrained_emb=opts.pretrained_emb, num_perspectives=num_perspectives)
     elif opts.arch == 'esim_bn_multitask':
         model = ESIMBNMultiTask(hidden_size=opts.hidden_size, glove_loader=glove_loader, \
             pretrained_emb=opts.pretrained_emb)
@@ -169,7 +169,26 @@ def train_quora(opts):
         num_workers=opts.nworkers, pin_memory=True)
 
     model = model_select(opts, glove_loader)
+    start_n_iter = 0
+    # for choosing the best model
+    best_val_acc = 0.0
 
+    model_path = os.path.join(opts.save_path, 'model_latest.net')
+    if os.path.exists(model_path):
+        # restoring training from save_state
+        print ('====> Resuming training from previous checkpoint')
+        save_state = torch.load(model_path, map_location='cpu')
+        model.load_state_dict(save_state['state_dict'])
+        start_n_iter = save_state['n_iter']
+        best_val_acc = save_state['best_val_acc']
+        opts = save_state['opts']
+        opts.start_epoch = save_state['epoch']
+
+    # for logging
+    logger = TensorboardXLogger(opts.start_epoch, opts.log_iter, opts.log_dir)
+    logger.set(['loss', 'acc'])
+    logger.n_iter = start_n_iter
+    
     if opts.optim == 'adam':
         optimizer = torch.optim.Adam(model.parameters(), opts.lr, weight_decay=opts.wd)
     elif opts.optim == 'sgd':
@@ -177,19 +196,17 @@ def train_quora(opts):
     else:
         raise NotImplementedError('Unknown optimizer type')
 
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=opts.lr_decay_step, gamma=opts.lr_decay_gamma)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=opts.lr_decay_step, gamma=opts.lr_decay_gamma, \
+        last_epoch=-1)
     criterion = nn.CrossEntropyLoss()
+
+    for i in range(opts.start_epoch):
+        # dummy steps for restoring state of the optimizer
+        scheduler.step()
     
     if use_cuda:
         model = model.cuda()
         criterion = criterion.cuda()
-
-    # for logging
-    logger = TensorboardXLogger(opts.start_epoch, opts.log_iter, opts.log_dir)
-    logger.set(['loss', 'acc'])
-
-    # for choosing the best model
-    best_val_acc = 0.0
 
     for epoch in range(opts.start_epoch, opts.epochs):
         model.train()
@@ -252,6 +269,25 @@ def train_reddit(opts):
         num_workers=opts.nworkers, pin_memory=True)
 
     model = model_select(opts, glove_loader)
+    start_n_iter = 0
+    # for choosing the best model
+    best_val_prec1 = 0.0
+
+    model_path = os.path.join(opts.save_path, 'model_latest.net')
+    if os.path.exists(model_path):
+        # restoring training from save_state
+        print ('====> Resuming training from previous checkpoint')
+        save_state = torch.load(model_path, map_location='cpu')
+        model.load_state_dict(save_state['state_dict'])
+        start_n_iter = save_state['n_iter']
+        best_val_prec1 = save_state['best_val_prec1']
+        opts = save_state['opts']
+        opts.start_epoch = save_state['epoch']
+    
+    # for logging
+    logger = TensorboardXLogger(opts.start_epoch, opts.log_iter, opts.log_dir)
+    logger.set(['loss', 'prec1', 'prec3'])
+    logger.n_iter = start_n_iter
 
     if opts.optim == 'adam':
         optimizer = torch.optim.Adam(model.parameters(), opts.lr, weight_decay=opts.wd)
@@ -260,19 +296,17 @@ def train_reddit(opts):
     else:
         raise NotImplementedError('Unknown optimizer type')
 
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=opts.lr_decay_step, gamma=opts.lr_decay_gamma)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=opts.lr_decay_step, gamma=opts.lr_decay_gamma, \
+        last_epoch=-1)
     criterion = nn.CrossEntropyLoss()
+
+    for i in range(opts.start_epoch):
+        # dummy steps for restoring state of the optimizer
+        scheduler.step()
     
     if use_cuda:
         model = model.cuda()
         criterion = criterion.cuda()
-
-    # for logging
-    logger = TensorboardXLogger(opts.start_epoch, opts.log_iter, opts.log_dir)
-    logger.set(['loss', 'prec1', 'prec3'])
-
-    # for choosing the best model
-    best_val_prec1 = 0.0
 
     for epoch in range(opts.start_epoch, opts.epochs):
         model.train()
@@ -349,6 +383,25 @@ def train_multitask(opts):
     train_loader = MultiLoader([qtrain_loader, rtrain_loader])
 
     model = model_select(opts, glove_loader)
+    start_n_iter = 0
+    # for choosing the best model
+    best_val_acc = 0.0
+
+    model_path = os.path.join(opts.save_path, 'model_latest.net')
+    if os.path.exists(model_path):
+        # restoring training from save_state
+        print ('====> Resuming training from previous checkpoint')
+        save_state = torch.load(model_path, map_location='cpu')
+        model.load_state_dict(save_state['state_dict'])
+        start_n_iter = save_state['n_iter']
+        best_val_acc = save_state['best_val_acc']
+        opts = save_state['opts']
+        opts.start_epoch = save_state['epoch']
+
+    # for logging
+    logger = TensorboardXLogger(opts.start_epoch, opts.log_iter, opts.log_dir)
+    logger.set(['loss', 'acc', 'prec1', 'prec3'])
+    logger.n_iter = start_n_iter
 
     if opts.optim == 'adam':
         optimizer = torch.optim.Adam(model.parameters(), opts.lr, weight_decay=opts.wd)
@@ -357,19 +410,17 @@ def train_multitask(opts):
     else:
         raise NotImplementedError('Unknown optimizer type')
 
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=opts.lr_decay_step, gamma=opts.lr_decay_gamma)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=opts.lr_decay_step, gamma=opts.lr_decay_gamma, \
+        last_epoch=-1)
     criterion = nn.CrossEntropyLoss()
+
+    for i in range(opts.start_epoch):
+        # dummy steps for restoring state of the optimizer
+        scheduler.step()
 
     if use_cuda:
         model = model.cuda()
         criterion = criterion.cuda()
-
-    # for logging
-    logger = TensorboardXLogger(opts.start_epoch, opts.log_iter, opts.log_dir)
-    logger.set(['loss', 'acc', 'prec1', 'prec3'])
-
-    # for choosing the best model
-    best_val_acc = 0.0
 
     for epoch in range(opts.start_epoch, opts.epochs):
         model.train()
