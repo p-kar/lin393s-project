@@ -56,6 +56,9 @@ class GloveLoader:
         self.embed_size = self.word_vectors[0].shape[0]
 
 def ixvr(input_layer, bias_val=0.01):
+    ignore_layers = ["<class 'torch.nn.modules.batchnorm.BatchNorm2d'>", \
+        "<class 'torch.nn.modules.batchnorm.BatchNorm1d'>", \
+        "<class 'torch.nn.modules.sparse.Embedding'>"]
     # If the layer is an LSTM
     if str(type(input_layer)) == "<class 'torch.nn.modules.rnn.LSTM'>":
         for i in range(input_layer.num_layers):
@@ -63,10 +66,10 @@ def ixvr(input_layer, bias_val=0.01):
             nn.init.xavier_normal_(getattr(input_layer, 'weight_hh_l%d'%(i)))
             nn.init.constant_(getattr(input_layer, 'bias_ih_l%d'%(i)), bias_val)
             nn.init.constant_(getattr(input_layer, 'bias_hh_l%d'%(i)), bias_val)
-    # For all other layers except batch norm
-    elif not (str(type(input_layer)) == "<class 'torch.nn.modules.batchnorm.BatchNorm2d'>" or str(type(input_layer)) == "<class 'torch.nn.modules.batchnorm.BatchNorm1d'>"):
+    elif not str(type(input_layer)) in ignore_layers:
         if hasattr(input_layer, 'weight'):
             nn.init.xavier_normal_(input_layer.weight);
         if hasattr(input_layer, 'bias'):
             nn.init.constant_(input_layer.bias, bias_val);
+
     return input_layer
