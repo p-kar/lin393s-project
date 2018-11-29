@@ -591,6 +591,46 @@ def print_statistics(opts, data_type='quora', split='test'):
     elif data_type == 'reddit':
         print (''.join(['+'] * 92))
 
+def generate_prediction_file(opts):
+
+    glove_loader = GloveLoader(glove_emb_file=opts.glove_emb_file)
+
+    full_dataset = QuoraQuestionPairsDataset(os.path.join(opts.data_dir, 'quora'), split='full', \
+            glove_loader=glove_loader, maxlen=opts.maxlen)
+    loader = DataLoader(full_dataset, batch_size=opts.bsize, shuffle=False, num_workers=0, pin_memory=True)
+
+    model_path = os.path.join(opts.save_dir, 'model_best.net')
+    save_state = torch.load(model_path, map_location='cpu')
+    model = model_select(save_state['opts'], glove_loader)
+    model.load_state_dict(save_state['state_dict'])
+    model.eval()
+
+    if use_cuda:
+        model = model.cuda()
+
+    fout = open('results.txt', 'w')
+    fout.write('test_id,is_duplicate\n')
+    index = 0
+
+    with torch.no_grad():
+        for _, d in enumerate(loader):
+            batch_size = d['s1'].shape[0]
+            if use_cuda:
+                d['s1'] = d['s1'].cuda()
+                d['s2'] = d['s2'].cuda()
+                d['len1'] = d['len1'].cuda()
+                d['len2'] = d['len2'].cuda()
+                d['label'] = d['label'].cuda()
+
+            out = model(d['s1'], d['s2'], d['len1'], d['len2'])
+            probs = F.softmax(out, dim=1)[:, 1].data.cpu().numpy()
+
+            for i, p in enumerate(probs):
+                fout.write(str(index + i) + ',' + str(p) + '\n')
+
+            index += batch_size
+    fout.close()
+
 
 if __name__ == '__main__':
 
@@ -609,5 +649,7 @@ if __name__ == '__main__':
         print_statistics(opts, data_type='quora', split='test')
     elif opts.mode == 'eval_reddit':
         print_statistics(opts, data_type='reddit', split='test')
+    elif opts.mode =='predict':
+        generate_prediction_file(opts)
     else:
         raise NotImplementedError('unrecognized mode')
