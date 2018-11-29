@@ -59,7 +59,7 @@ def model_select(opts, glove_loader):
     elif opts.arch == 'decomp_attention':
         model = DecomposableAttention(hidden_size=opts.hidden_size, dropout_p=opts.dropout_p, \
             glove_loader=glove_loader, pretrained_emb=opts.pretrained_emb)
-    elif opts.arch == 'bimpm':
+    elif opts.arch == 'bimpm' or opts.arch == 'bimpm_multitask':
         model = BiMPM(hidden_size=opts.hidden_size, dropout_p=opts.dropout_p, \
             glove_loader=glove_loader, pretrained_emb=opts.pretrained_emb)
     elif opts.arch == 'esim_multitask':
