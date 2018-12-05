@@ -37,6 +37,30 @@ def readQuoraDataFile(fname):
 
 	return samples
 
+def readQuoraTestDataFile(fname):
+	"""
+	Args:
+		fname: file containing the sentence pairs for the split
+	Output:
+		samples: Triplets containing 2 sentences and the label
+	"""
+
+	with open(fname, 'r') as csvfile:
+		reader = csv.reader(csvfile, delimiter=',', quotechar='"')
+		content = [row for row in reader]
+
+	samples = []
+	for line in content:
+		if len(line) == 3:
+			line = line[-2:]
+			line[0] = word_tokenize(line[0], preserve_line=True)
+			line[1] = word_tokenize(line[1], preserve_line=True)
+			if len(line[0]) == 0 or len(line[1]) == 0:
+				continue
+			samples.append(line)
+
+	return samples
+
 def readRedditDataFile(fname):
 	"""
 	Args:
@@ -75,7 +99,10 @@ class QuoraQuestionPairsDataset(Dataset):
 		self.split = split
 		self.glove_vec_size = glove_loader.embed_size
 		self.data_file = os.path.join(root, split + '.csv')
-		self.data = readQuoraDataFile(self.data_file)
+		if split != 'final_full':
+			self.data = readQuoraDataFile(self.data_file)
+		else:
+			self.data = readQuoraTestDataFile(self.data_file)
 		self.maxlen = maxlen
 
 	def __len__(self):
@@ -91,7 +118,10 @@ class QuoraQuestionPairsDataset(Dataset):
 	def __getitem__(self, idx):
 		raw_s1 = ' '.join(self.data[idx][0])
 		raw_s2 = ' '.join(self.data[idx][1])
-		label = self.data[idx][2]
+		if self.split != 'final_full':
+			label = self.data[idx][2]
+		else:
+			label = 0
 		s1 = torch.LongTensor(self._parse(self.data[idx][0]))
 		s2 = torch.LongTensor(self._parse(self.data[idx][1]))
 		len_s1 = min(self.maxlen, len(self.data[idx][0]))

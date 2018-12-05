@@ -595,11 +595,11 @@ def generate_prediction_file(opts):
 
     glove_loader = GloveLoader(glove_emb_file=opts.glove_emb_file)
 
-    full_dataset = QuoraQuestionPairsDataset(os.path.join(opts.data_dir, 'quora'), split='full', \
+    full_dataset = QuoraQuestionPairsDataset(os.path.join(opts.data_dir, 'quora'), split='final_full', \
             glove_loader=glove_loader, maxlen=opts.maxlen)
     loader = DataLoader(full_dataset, batch_size=opts.bsize, shuffle=False, num_workers=0, pin_memory=True)
 
-    model_path = os.path.join(opts.save_dir, 'model_best.net')
+    model_path = os.path.join(opts.save_path, 'model_best.net')
     save_state = torch.load(model_path, map_location='cpu')
     model = model_select(save_state['opts'], glove_loader)
     model.load_state_dict(save_state['state_dict'])
@@ -626,7 +626,7 @@ def generate_prediction_file(opts):
             probs = F.softmax(out, dim=1)[:, 1].data.cpu().numpy()
 
             for i, p in enumerate(probs):
-                fout.write(str(index + i) + ',' + str(p) + '\n')
+                fout.write(str(index + i) + ',' + '{:.5f}'.format(p) + '\n')
 
             index += batch_size
     fout.close()
